@@ -1,13 +1,6 @@
-# ── Cloudflare Pages config ──────────────────────────────────────────────────
+# Cloudflare Pages — static site, no Worker build needed.
+# Build command in dashboard: (empty)
+# Build output directory: public
 name = "file-chat-app"
 compatibility_date = "2024-01-15"
 pages_build_output_dir = "public"
-
-# ── Cloudflare Worker (Functions) ─────────────────────────────────────────────
-# API endpoints are in /functions folder (Cloudflare Pages Functions)
-# They proxy to the local Node.js server or run standalone logic
-
-[vars]
-# Set this in Cloudflare dashboard → Pages → Settings → Environment Variables
-# LOCAL_API_URL = "https://your-tunnel.trycloudflare.com"  # your local server via CF Tunnel
-ENVIRONMENT = "production"
