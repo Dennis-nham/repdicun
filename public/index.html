@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>📂 Trợ Lý Tìm File</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebee;min-height:100vh}
+
+/* ── Launcher ── */
+#fab{
+  position:fixed;bottom:24px;right:24px;width:58px;height:58px;
+  border-radius:50%;background:linear-gradient(135deg,#1565c0,#0d47a1);
+  border:none;cursor:pointer;box-shadow:0 4px 18px rgba(21,101,192,.5);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;z-index:9999;transition:transform .2s,box-shadow .2s;
+  color:#fff;
+}
+#fab:hover{transform:scale(1.1);box-shadow:0 6px 26px rgba(21,101,192,.65)}
+#fab .badge{
+  position:absolute;top:-4px;right:-4px;background:#e53935;
+  color:#fff;border-radius:10px;font-size:10px;font-weight:700;
+  padding:1px 5px;min-width:18px;text-align:center;
+  border:2px solid #fff;display:none;
+}
+#fab .badge.show{display:block}
+
+/* ── Window ── */
+.cw{
+  position:fixed;bottom:94px;right:24px;
+  width:460px;height:680px;
+  background:#fff;border-radius:16px;
+  box-shadow:0 16px 56px rgba(0,0,0,.2);
+  display:flex;flex-direction:column;overflow:hidden;
+  z-index:9998;
+  transition:opacity .22s,transform .22s;
+  transform-origin:bottom right;
+}
+.cw.off{opacity:0;pointer-events:none;transform:scale(.93) translateY(12px)}
+.cw.on {opacity:1;transform:scale(1)   translateY(0)}
+
+/* ── Header ── */
+.ch{
+  background:linear-gradient(135deg,#1565c0,#0d47a1);
+  padding:12px 16px;display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.ch-av{
+  width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.ch-info h3{color:#fff;font-size:14px;font-weight:700;line-height:1.2}
+.ch-info p {color:rgba(255,255,255,.75);font-size:11px;margin-top:1px}
+.sdot{
+  width:7px;height:7px;border-radius:50%;background:#4caf50;
+  display:inline-block;margin-right:4px;animation:pulse 2s infinite;
+}
+.sdot.busy{background:#ff9800}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.ch-actions{margin-left:auto;display:flex;gap:6px}
+.ch-btn{
+  background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:30px;height:30px;border-radius:50%;cursor:pointer;
+  font-size:14px;transition:background .15s;display:flex;align-items:center;justify-content:center;
+}
+.ch-btn:hover{background:rgba(255,255,255,.28)}
+
+/* ── Filter bar ── */
+.fbar{
+  padding:8px 12px;border-bottom:1px solid #f0f2f5;
+  display:flex;gap:6px;overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;
+}
+.fbar::-webkit-scrollbar{display:none}
+.ftag{
+  padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;white-space:nowrap;border:1.5px solid transparent;
+  background:#f0f2f5;color:#57606a;transition:all .12s;
+}
+.ftag.active{background:#e8f0fe;color:#1565c0;border-color:#1565c0}
+.ftag:hover{background:#e8f0fe;color:#1565c0}
+
+/* ── Messages ── */
+.msgs{
+  flex:1;overflow-y:auto;padding:14px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.msgs::-webkit-scrollbar{width:4px}
+.msgs::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+
+/* ── Bubbles ── */
+.mrow{display:flex;gap:8px;align-items:flex-end}
+.mrow.user{flex-direction:row-reverse}
+.mav{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0;
+}
+.mrow.bot .mav{background:#e8f0fe}
+.mrow.user .mav{background:#1565c0}
+
+.bub{
+  max-width:84%;padding:9px 13px;border-radius:16px;
+  font-size:13.5px;line-height:1.55;word-break:break-word;
+}
+.mrow.bot  .bub{background:#f0f2f5;color:#1f2328;border-bottom-left-radius:3px}
+.mrow.user .bub{background:#1565c0;color:#fff;border-bottom-right-radius:3px}
+
+.mt{font-size:10px;color:#9aa0a6;margin-top:3px;padding:0 3px}
+.mrow.user .mt{text-align:right}
+
+/* ── Typing ── */
+.dots{display:flex;gap:4px;padding:5px 2px}
+.dots span{
+  width:7px;height:7px;border-radius:50%;background:#9aa0a6;
+  animation:bop .8s infinite;
+}
+.dots span:nth-child(2){animation-delay:.18s}
+.dots span:nth-child(3){animation-delay:.36s}
+@keyframes bop{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* ── Scan bar ── */
+.scanbar{
+  background:#e3f2fd;border-radius:8px;padding:9px 12px;
+  font-size:12px;color:#1565c0;display:flex;align-items:center;gap:8px;
+}
+.spin{animation:spin 1s linear infinite;display:inline-block;font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pgbar{background:#bbdefb;border-radius:4px;height:3px;flex:1;overflow:hidden}
+.pgfill{background:#1565c0;height:100%;width:0%;animation:pggo 1.8s ease-in-out forwards}
+@keyframes pggo{to{width:100%}}
+
+/* ── Result list ── */
+.rlist{display:flex;flex-direction:column;gap:5px}
+.rhead{font-size:11px;color:#5f6368;font-weight:600;padding:2px 0 6px}
+
+/* ── File card ── */
+.fcard{
+  background:#fff;border:1.5px solid #e8eaed;border-radius:10px;
+  padding:9px 11px;cursor:pointer;display:flex;gap:9px;align-items:flex-start;
+  transition:border-color .15s,box-shadow .15s,background .1s;
+}
+.fcard:hover{border-color:#1565c0;box-shadow:0 2px 8px rgba(21,101,192,.13);background:#f8fbff}
+.fcard.sel{border-color:#1565c0;background:#e8f0fe}
+.fcard.sel .fname{color:#1565c0}
+
+.fic{font-size:22px;flex-shrink:0;margin-top:1px;line-height:1}
+.fi{flex:1;min-width:0}
+.fname{font-size:12.5px;font-weight:700;color:#1f2328;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fdir{font-size:10.5px;color:#5f6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.fmeta{font-size:10px;color:#9aa0a6;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.sbadge{
+  font-size:9.5px;padding:2px 6px;border-radius:12px;
+  background:#e8f0fe;color:#1565c0;font-weight:700;
+  flex-shrink:0;align-self:center;margin-left:auto;
+}
+
+/* ── Action bar ── */
+.abar{display:flex;flex-wrap:wrap;gap:5px;padding:7px 0 3px}
+.abtn{
+  padding:5px 11px;border-radius:20px;border:1.5px solid;
+  font-size:11px;font-weight:700;cursor:pointer;
+  transition:background .13s,color .13s,transform .1s;
+  display:flex;align-items:center;gap:4px;white-space:nowrap;
+}
+.abtn:hover{transform:translateY(-1px)}
+.abtn:active{transform:translateY(0)}
+.abtn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+.ab-read   {background:#fff;border-color:#1565c0;color:#1565c0}
+.ab-read:hover{background:#1565c0;color:#fff}
+.ab-open   {background:#fff;border-color:#0277bd;color:#0277bd}
+.ab-open:hover{background:#0277bd;color:#fff}
+.ab-edit   {background:#fff;border-color:#ef6c00;color:#ef6c00}
+.ab-edit:hover{background:#ef6c00;color:#fff}
+.ab-cv     {background:#fff;border-color:#7b1fa2;color:#7b1fa2}
+.ab-cv:hover{background:#7b1fa2;color:#fff}
+.ab-copy   {background:#fff;border-color:#2e7d32;color:#2e7d32}
+.ab-copy:hover{background:#2e7d32;color:#fff}
+.ab-folder {background:#fff;border-color:#5d4037;color:#5d4037}
+.ab-folder:hover{background:#5d4037;color:#fff}
+.ab-info   {background:#fff;border-color:#37474f;color:#37474f}
+.ab-info:hover{background:#37474f;color:#fff}
+.ab-del    {background:#fff;border-color:#c62828;color:#c62828}
+.ab-del:hover{background:#c62828;color:#fff}
+
+/* ── Converting spinner ── */
+.cvwrap{display:flex;align-items:center;gap:8px;font-size:12px;color:#7b1fa2}
+.cvbar{background:#e1bee7;border-radius:4px;height:3px;flex:1;overflow:hidden}
+.cvfill{background:#7b1fa2;height:100%;width:0%;animation:pggo 4s ease-in-out forwards}
+
+/* ── Preview panel ── */
+.prev{
+  background:#f8f9fa;border:1px solid #e8eaed;border-radius:8px;
+  padding:10px 12px;font-size:12px;color:#1f2328;
+  max-height:220px;overflow-y:auto;
+  white-space:pre-wrap;word-break:break-word;font-family:monospace;
+}
+.prev img{max-width:100%;border-radius:6px;display:block}
+.prev::-webkit-scrollbar{width:4px}
+.prev::-webkit-scrollbar-thumb{background:#d0d7de;border-radius:4px}
+
+/* ── Suggestions ── */
+.suggs{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.schip{
+  padding:4px 10px;background:#f0f2f5;border:1px solid #dadce0;
+  border-radius:20px;font-size:11.5px;cursor:pointer;color:#5f6368;
+  transition:background .12s,border-color .12s,color .12s;
+}
+.schip:hover{background:#e8f0fe;border-color:#1565c0;color:#1565c0}
+
+/* ── No results ── */
+.nores{text-align:center;padding:16px;color:#9aa0a6;font-size:13px}
+.nores .ni{font-size:34px;display:block;margin-bottom:8px}
+
+/* ── Input area ── */
+.ia{
+  padding:10px 12px;border-top:1px solid #f0f2f5;
+  display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0;
+}
+.cinput{
+  flex:1;border:1.5px solid #dadce0;border-radius:22px;
+  padding:8px 15px;font-size:13.5px;outline:none;resize:none;
+  max-height:90px;overflow-y:auto;font-family:inherit;
+  transition:border-color .15s;line-height:1.5;
+}
+.cinput:focus{border-color:#1565c0}
+.cinput::placeholder{color:#bdc1c6}
+.cinput:disabled{background:#f8f9fa}
+
+.bsend{
+  width:40px;height:40px;border-radius:50%;background:#1565c0;
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:17px;color:#fff;flex-shrink:0;transition:background .15s,transform .1s;
+}
+.bsend:hover{background:#0d47a1;transform:scale(1.06)}
+.bsend:disabled{background:#dadce0;cursor:not-allowed;transform:none}
+
+/* ── Mic button ── */
+.bmic{
+  width:40px;height:40px;border-radius:50%;
+  background:#fff;border:1.5px solid #dadce0;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+  transition:background .15s,border-color .15s,transform .1s;
+  position:relative;
+}
+.bmic:hover{background:#fce4ec;border-color:#e53935;transform:scale(1.06)}
+.bmic.listening{
+  background:#e53935;border-color:#e53935;
+  animation:mic-pulse 1.2s ease-in-out infinite;
+}
+.bmic.listening::after{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:2px solid #e53935;opacity:.5;
+  animation:mic-ring 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.5)}
+  50%{box-shadow:0 0 0 8px rgba(229,57,53,0)}
+}
+@keyframes mic-ring{
+  0%{transform:scale(1);opacity:.6}
+  100%{transform:scale(1.6);opacity:0}
+}
+.bmic:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* ── Voice status bar ── */
+.voice-bar{
+  padding:6px 14px;background:#fce4ec;border-top:1px solid #f8bbd0;
+  font-size:12px;color:#c62828;display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+}
+.voice-bar .vdots{display:flex;gap:3px;align-items:center}
+.voice-bar .vdots span{
+  width:5px;height:5px;border-radius:50%;background:#e53935;
+  animation:vbounce .7s infinite;
+}
+.voice-bar .vdots span:nth-child(2){animation-delay:.15s}
+.voice-bar .vdots span:nth-child(3){animation-delay:.3s}
+@keyframes vbounce{0%,60%,100%{height:5px}30%{height:13px}}
+
+/* ── Mic button in translate panel ── */
+.tr-mic{
+  width:32px;height:32px;border-radius:50%;
+  background:#fff;border:1.5px solid #dadce0;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:background .13s,border-color .13s;flex-shrink:0;
+}
+.tr-mic:hover{background:#fce4ec;border-color:#e53935}
+.tr-mic.listening{background:#e53935;border-color:#e53935;animation:mic-pulse 1.2s infinite}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  background:rgba(32,33,36,.88);color:#fff;padding:8px 16px;
+  border-radius:8px;font-size:12.5px;z-index:10000;
+  animation:tfade 2.8s ease forwards;pointer-events:none;
+  white-space:nowrap;max-width:340px;text-align:center;
+}
+@keyframes tfade{
+  0%  {opacity:0;transform:translateX(-50%) translateY(8px)}
+  12% {opacity:1;transform:translateX(-50%) translateY(0)}
+  75% {opacity:1}
+  100%{opacity:0}
+}
+
+/* ── Stats panel ── */
+.stats{
+  padding:12px 14px;background:#f8f9fa;border-bottom:1px solid #f0f2f5;
+  font-size:11.5px;color:#5f6368;display:flex;flex-wrap:wrap;gap:10px;
+  flex-shrink:0;
+}
+.stat-item{display:flex;align-items:center;gap:5px}
+.stat-item strong{color:#1f2328;font-weight:700}
+
+/* ── Welcome card ── */
+.wcard{
+  background:linear-gradient(135deg,#e3f2fd,#f3e5f5);
+  border-radius:12px;padding:14px;
+}
+.wcard h4{font-size:14px;font-weight:700;color:#1565c0;margin-bottom:6px}
+.wcard ul{list-style:none;font-size:12.5px;color:#37474f;display:flex;flex-direction:column;gap:4px}
+.wcard ul li::before{content:"";margin-right:4px}
+
+/* ── Divider ── */
+.divider{
+  text-align:center;font-size:10px;color:#9aa0a6;
+  padding:2px 0;display:flex;align-items:center;gap:6px;
+}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:#e8eaed}
+
+/* ── Tab bar ── */
+.tabbar{
+  display:flex;border-bottom:1px solid #e8eaed;flex-shrink:0;background:#fff;
+}
+.tab{
+  flex:1;padding:9px 4px;font-size:12px;font-weight:600;
+  border:none;background:none;cursor:pointer;color:#5f6368;
+  border-bottom:2.5px solid transparent;transition:color .12s,border-color .12s;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.tab.active{color:#1565c0;border-bottom-color:#1565c0}
+.tab:hover{color:#1565c0;background:#f8fbff}
+
+/* ── Translate panel ── */
+.trpanel{
+  flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;
+}
+.trpanel::-webkit-scrollbar{width:4px}
+.trpanel::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+
+.tr-selrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tr-sel{
+  flex:1;min-width:100px;padding:7px 10px;border:1.5px solid #dadce0;border-radius:10px;
+  font-size:13px;background:#fff;cursor:pointer;outline:none;font-family:inherit;
+  transition:border-color .15s;
+}
+.tr-sel:focus{border-color:#1565c0}
+.tr-swap{
+  width:32px;height:32px;border-radius:50%;border:1.5px solid #dadce0;
+  background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;
+  justify-content:center;transition:background .12s,border-color .12s;flex-shrink:0;
+}
+.tr-swap:hover{background:#e8f0fe;border-color:#1565c0}
+
+.tr-box{
+  border:1.5px solid #dadce0;border-radius:12px;overflow:hidden;
+  transition:border-color .15s;
+}
+.tr-box:focus-within{border-color:#1565c0}
+.tr-box-hdr{
+  padding:6px 12px;background:#f8f9fa;border-bottom:1px solid #e8eaed;
+  font-size:11px;font-weight:600;color:#5f6368;display:flex;justify-content:space-between;align-items:center;
+}
+.tr-box-hdr span{color:#9aa0a6;font-weight:400;font-size:10.5px}
+.tr-textarea{
+  width:100%;padding:10px 12px;border:none;outline:none;resize:none;
+  font-size:13.5px;font-family:inherit;line-height:1.6;min-height:80px;
+  background:#fff;
+}
+.tr-result{
+  padding:10px 12px;font-size:13.5px;line-height:1.6;min-height:60px;
+  color:#1f2328;background:#f8fbff;white-space:pre-wrap;word-break:break-word;
+}
+.tr-result.loading{color:#9aa0a6;font-style:italic}
+
+.tr-actions{display:flex;gap:6px;flex-wrap:wrap}
+.tr-btn{
+  padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;
+  cursor:pointer;border:1.5px solid;transition:background .13s,color .13s;
+  display:flex;align-items:center;gap:5px;
+}
+.tr-btn.primary{background:#1565c0;border-color:#1565c0;color:#fff}
+.tr-btn.primary:hover{background:#0d47a1}
+.tr-btn.primary:disabled{background:#dadce0;border-color:#dadce0;cursor:not-allowed}
+.tr-btn.sec{background:#fff;border-color:#dadce0;color:#5f6368}
+.tr-btn.sec:hover{border-color:#1565c0;color:#1565c0}
+
+.tr-history{display:flex;flex-direction:column;gap:6px}
+.tr-hist-item{
+  background:#f0f2f5;border-radius:10px;padding:8px 11px;font-size:12px;
+  cursor:pointer;transition:background .1s;
+}
+.tr-hist-item:hover{background:#e8f0fe}
+.tr-hist-src{color:#5f6368;font-size:11px;margin-bottom:3px}
+.tr-hist-pair{display:flex;gap:6px;align-items:flex-start}
+.tr-hist-orig{color:#1f2328;flex:1}
+.tr-hist-arrow{color:#9aa0a6;flex-shrink:0}
+.tr-hist-trsl{color:#1565c0;flex:1}
+
+.tr-langs-quick{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.tr-lang-chip{
+  padding:3px 9px;background:#f0f2f5;border:1px solid #dadce0;
+  border-radius:20px;font-size:11px;cursor:pointer;color:#5f6368;
+  transition:background .1s,border-color .1s;
+}
+.tr-lang-chip:hover{background:#e8f0fe;border-color:#1565c0;color:#1565c0}
+.tr-lang-chip.active{background:#e8f0fe;border-color:#1565c0;color:#1565c0}
+
+/* ── Translate button in action bar ── */
+.ab-tr{background:#fff;border-color:#00838f;color:#00838f}
+.ab-tr:hover{background:#00838f;color:#fff}
+
+/* ── Advanced search panel ── */
+.advpanel{
+  padding:8px 12px 10px;border-bottom:1px solid #f0f2f5;
+  background:#fafbfc;display:flex;flex-direction:column;gap:6px;flex-shrink:0;
+  font-size:12px;
+}
+.advpanel-title{font-weight:700;color:#5f6368;font-size:11px;margin-bottom:2px}
+.advrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.adv-lbl{font-size:10.5px;color:#9aa0a6;white-space:nowrap;min-width:30px}
+.advinput{
+  flex:1;min-width:70px;padding:4px 8px;border:1.5px solid #dadce0;border-radius:8px;
+  font-size:12px;outline:none;font-family:inherit;background:#fff;
+  transition:border-color .13s;
+}
+.advinput:focus{border-color:#1565c0}
+.advclear{
+  padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;
+  border:1.5px solid #ef6c00;color:#ef6c00;background:#fff;cursor:pointer;
+}
+.advclear:hover{background:#ef6c00;color:#fff}
+
+/* ── File Browser ── */
+.fbrowser{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:3px;background:#fff}
+.fbrowser::-webkit-scrollbar{width:4px}
+.fbrowser::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+.fb-crumb{
+  font-size:10.5px;color:#5f6368;padding:2px 0 8px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;
+}
+.fb-item{
+  display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:8px;
+  cursor:pointer;transition:background .1s;
+}
+.fb-item:hover{background:#f0f2f5}
+.fb-ic{font-size:16px;flex-shrink:0;line-height:1}
+.fb-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.fb-dir .fb-name{font-weight:600;color:#1565c0}
+.fb-file .fb-name{color:#1f2328}
+.fb-sz{font-size:10px;color:#9aa0a6;flex-shrink:0}
+
+/* ── Dark mode ── */
+[data-dark='1'] body{background:#0f0f1a}
+[data-dark='1'] .cw{background:#1c1c2e;box-shadow:0 16px 56px rgba(0,0,0,.6);color:#e0e0e0}
+[data-dark='1'] .tabbar,[data-dark='1'] .ia{background:#232336;border-color:#333}
+[data-dark='1'] .fbar{background:#232336;border-color:#333}
+[data-dark='1'] .tab{color:#888;background:none}
+[data-dark='1'] .tab.active{color:#82b1ff;border-color:#82b1ff}
+[data-dark='1'] .tab:hover{background:#2a2a42;color:#82b1ff}
+[data-dark='1'] .ftag{background:#2a2a3c;color:#888;border-color:transparent}
+[data-dark='1'] .ftag.active{background:#162a50;color:#82b1ff;border-color:#1565c0}
+[data-dark='1'] .msgs{background:#1c1c2e}
+[data-dark='1'] .mrow.bot .bub{background:#272740;color:#ddd}
+[data-dark='1'] .mrow.user .bub{background:#0d47a1}
+[data-dark='1'] .fcard{background:#232336;border-color:#333}
+[data-dark='1'] .fcard:hover{background:#2a2a46;border-color:#1565c0}
+[data-dark='1'] .fcard.sel{background:#162a50}
+[data-dark='1'] .fname,.fb-file .fb-name{color:#ddd}
+[data-dark='1'] .cinput{background:#232336;border-color:#444;color:#ddd}
+[data-dark='1'] .cinput::placeholder{color:#555}
+[data-dark='1'] .bmic{background:#232336;border-color:#444}
+[data-dark='1'] .wcard{background:linear-gradient(135deg,#162050,#251640)}
+[data-dark='1'] .wcard h4{color:#82b1ff}
+[data-dark='1'] .wcard ul{color:#aaa}
+[data-dark='1'] .schip{background:#272740;border-color:#444;color:#888}
+[data-dark='1'] .schip:hover{background:#162a50;color:#82b1ff;border-color:#1565c0}
+[data-dark='1'] .prev{background:#0f0f1a;border-color:#333;color:#ccc}
+[data-dark='1'] .advpanel{background:#1c1c2e;border-color:#333}
+[data-dark='1'] .advinput{background:#272740;border-color:#444;color:#ddd}
+[data-dark='1'] .fbrowser{background:#1c1c2e}
+[data-dark='1'] .fb-item:hover{background:#272740}
+[data-dark='1'] .fb-dir .fb-name{color:#82b1ff}
+[data-dark='1'] .fb-file .fb-name{color:#ccc}
+[data-dark='1'] .tr-box{border-color:#444}
+[data-dark='1'] .tr-box-hdr{background:#232336;border-color:#333;color:#aaa}
+[data-dark='1'] .tr-textarea{background:#272740;color:#ddd}
+[data-dark='1'] .tr-result{background:#162050;color:#ddd}
+[data-dark='1'] .tr-sel{background:#272740;border-color:#444;color:#ddd}
+[data-dark='1'] .tr-hist-item{background:#272740;color:#ccc}
+[data-dark='1'] .tr-hist-item:hover{background:#162a50}
+[data-dark='1'] .trpanel{background:#1c1c2e}
+[data-dark='1'] .rhead{color:#888}
+[data-dark='1'] .nores{color:#666}
+[data-dark='1'] .sbadge{background:#162a50;color:#82b1ff}
+[data-dark='1'] .voice-bar{background:#3a1010;border-color:#5a2020;color:#ff8a80}
+
+@media(max-width:500px){
+  .cw{width:calc(100vw - 16px);right:8px;bottom:80px;height:calc(100vh - 100px)}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+const FMT_TIME = (d=new Date()) =>
+  d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+
+// ── Vietnamese normalization for smart search ────────────────────────────────
+function vi2plain(s='') {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/gi,'d').toLowerCase().trim();
+}
+
+// ── Intent parser ────────────────────────────────────────────────────────────
+const SEARCH_KW = ['tìm','kiếm','search','lấy','xem','mở','có không','đâu','file','tệp','tài liệu','danh sách'];
+function isSearch(t){ const l=t.toLowerCase(); return SEARCH_KW.some(k=>l.includes(k)); }
+
+function extractQ(text) {
+  const pats = [
+    /tìm(?:\s+(?:cho\s+tôi|giúp\s+tôi))?(?:\s+(?:file|tệp|tài\s+liệu))?\s+(?:(?:có\s+)?(?:tên|tên\s+là)\s+)?[""""]?([^""""\n?!]+)/i,
+    /(?:file|tệp|tài\s*liệu)\s+(?:tên\s+)?[""""]?([^""""\n?!]+)/i,
+    /(?:kiếm|search)\s+[""""]?([^""""\n?!]+)/i,
+    /[""""]([^""""\n]+)[""""]/, // quoted
+    /(.+)/,
+  ];
+  for (const re of pats) {
+    const m = text.match(re);
+    if (m) return m[1].replace(/[""""\?!.,]+$/,'').trim();
+  }
+  return text.trim();
+}
+
+// ── EXT filter groups ────────────────────────────────────────────────────────
+const FILTERS = [
+  { label:'Tất cả', val:'',        icon:'🗂' },
+  { label:'PDF',    val:'.pdf',     icon:'📄' },
+  { label:'Word',   val:'.docx,.doc', icon:'📝' },
+  { label:'Excel',  val:'.xlsx,.xls', icon:'📊' },
+  { label:'Ảnh',    val:'.jpg,.jpeg,.png,.gif,.bmp,.tiff', icon:'🖼️' },
+  { label:'PPT',    val:'.pptx,.ppt', icon:'📑' },
+  { label:'Video',  val:'.mp4,.avi,.mov,.mkv', icon:'🎬' },
+];
+
+// ── FileCard ─────────────────────────────────────────────────────────────────
+function FileCard({ file, onSelect, selected }) {
+  return (
+    <div className={`fcard${selected?' sel':''}`} onClick={()=>onSelect(file)} title={file.path}>
+      <div className="fic">{file.icon}</div>
+      <div className="fi">
+        <div className="fname">{file.name}</div>
+        <div className="fdir">📁 {file.dir||'/'}</div>
+        <div className="fmeta">
+          <span>{(file.ext||'').toUpperCase().replace('.','') || 'FILE'}</span>
+          <span>{file.size}</span>
+          <span>📅 {file.modified}</span>
+        </div>
+      </div>
+      <div className="sbadge">{Math.min(file.score||0,100)}%</div>
+    </div>
+  );
+}
+
+// ── ActionBar ─────────────────────────────────────────────────────────────────
+function ActionBar({ file, onAction, loading }) {
+  const ext  = (file.ext||'').toLowerCase();
+  const isPDF = ext==='.pdf';
+  const isDoc = ['.docx','.doc'].includes(ext);
+  const isImg = ['.jpg','.jpeg','.png','.gif','.bmp','.tiff','.tif','.webp'].includes(ext);
+  const isXls = ['.xlsx','.xls','.csv'].includes(ext);
+  const isTxt = ['.txt','.csv'].includes(ext);
+  const canRead = isImg||isDoc||isXls||isTxt;
+
+  return (
+    <div className="abar">
+      {canRead && (
+        <button className="abtn ab-read" onClick={()=>onAction('read',file)} disabled={!!loading}>
+          👁 ĐỌC
+        </button>
+      )}
+      <button className="abtn ab-open" onClick={()=>onAction('open',file)} disabled={!!loading}>
+        🚀 MỞ
+      </button>
+      <button className="abtn ab-edit" onClick={()=>onAction('edit',file)} disabled={!!loading}>
+        ✏️ CHỈNH SỬA
+      </button>
+      {isPDF && (
+        <button className="abtn ab-cv" onClick={()=>onAction('pdf2word',file)} disabled={!!loading}>
+          🔄 PDF→WORD
+        </button>
+      )}
+      {isDoc && (
+        <button className="abtn ab-cv" onClick={()=>onAction('word2pdf',file)} disabled={!!loading}>
+          🔄 WORD→PDF
+        </button>
+      )}
+      <button className="abtn ab-tr" onClick={()=>onAction('translate',file)} disabled={!!loading}>
+        🌐 DỊCH TÊN
+      </button>
+      <button className="abtn ab-copy" onClick={()=>onAction('copypath',file)} disabled={!!loading}>
+        📋 SAO CHÉP
+      </button>
+      <button className="abtn ab-folder" onClick={()=>onAction('folder',file)} disabled={!!loading}>
+        📂 THƯ MỤC
+      </button>
+      <button className="abtn ab-info" onClick={()=>onAction('info',file)} disabled={!!loading}>
+        ℹ️ THÔNG TIN
+      </button>
+    </div>
+  );
+}
+
+// ── Message renderer ──────────────────────────────────────────────────────────
+function Msg({ msg, onFileSelect, selFile, onSuggest }) {
+  const [actLoading, setActLoading] = useState('');
+
+  if (msg.type==='user') return (
+    <div className="mrow user">
+      <div className="mav">👤</div>
+      <div>
+        <div className="bub">{msg.text}</div>
+        <div className="mt">{msg.time}</div>
+      </div>
+    </div>
+  );
+
+  if (msg.type==='typing') return (
+    <div className="mrow bot">
+      <div className="mav">🤖</div>
+      <div className="bub" style={{padding:'7px 12px'}}>
+        <div className="dots"><span/><span/><span/></div>
+      </div>
+    </div>
+  );
+
+  if (msg.type==='scanning') return (
+    <div className="mrow bot">
+      <div className="mav">🤖</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="bub">
+          <div className="scanbar">
+            <span className="spin">⚙️</span>
+            <span>Đang quét <strong>{(msg.total||0).toLocaleString()}</strong> tệp...</span>
+            <div className="pgbar"><div className="pgfill"/></div>
+          </div>
+        </div>
+        <div className="mt">{msg.time}</div>
+      </div>
+    </div>
+  );
+
+  if (msg.type==='results') return (
+    <div className="mrow bot">
+      <div className="mav">🤖</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="bub" style={{maxWidth:'100%',background:'#f0f2f5'}}>
+          {msg.text && <div style={{marginBottom:8,fontSize:13,lineHeight:1.4}}
+            dangerouslySetInnerHTML={{__html:msg.text}}/>}
+          {msg.results && msg.results.length>0 ? (
+            <div className="rlist">
+              <div className="rhead">🔍 {msg.results.length} kết quả phù hợp:</div>
+              {msg.results.map((f,i)=>(
+                <FileCard key={i} file={f}
+                  onSelect={onFileSelect}
+                  selected={selFile&&selFile.path===f.path}/>
+              ))}
+            </div>
+          ):(
+            <div className="nores">
+              <span className="ni">🔍</span>
+              Không tìm thấy tệp phù hợp.<br/>Thử từ khóa khác hoặc bỏ bộ lọc.
+            </div>
+          )}
+        </div>
+        <div className="mt">{msg.time}</div>
+      </div>
+    </div>
+  );
+
+  if (msg.type==='actions') {
+    const handleAction = async (action, f) => {
+      setActLoading(action);
+      await msg.onAction(action, f);
+      setActLoading('');
+    };
+    return (
+      <div className="mrow bot">
+        <div className="mav">🤖</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div className="bub" style={{maxWidth:'100%',background:'#f0f2f5'}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>📄 {msg.file.name}</div>
+            <div style={{fontSize:11.5,color:'#5f6368',marginBottom:6}}>Chọn thao tác:</div>
+            <ActionBar file={msg.file} onAction={handleAction} loading={actLoading}/>
+            {actLoading && (
+              <div style={{marginTop:8}}>
+                {['pdf2word','word2pdf'].includes(actLoading)?(
+                  <div className="cvwrap">
+                    <span className="spin">🔄</span>
+                    <span>Đang chuyển đổi...</span>
+                    <div className="cvbar"><div className="cvfill"/></div>
+                  </div>
+                ):(
+                  <div style={{fontSize:11.5,color:'#9aa0a6'}}>⏳ Đang xử lý...</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="mt">{msg.time}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (msg.type==='preview') return (
+    <div className="mrow bot">
+      <div className="mav">🤖</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="bub" style={{maxWidth:'100%',background:'#f0f2f5'}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>
+            {msg.previewType==='image'?'🖼️':'📄'} {msg.filename}
+          </div>
+          <div className="prev">
+            {msg.previewType==='image'
+              ? <img src={msg.data} alt={msg.filename}/>
+              : (msg.content || msg.message || '(Không có nội dung để hiển thị)')}
+          </div>
+        </div>
+        <div className="mt">{msg.time}</div>
+      </div>
+    </div>
+  );
+
+  if (msg.type==='welcome') return (
+    <div className="mrow bot">
+      <div className="mav">🤖</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="wcard">
+          <h4>👋 Xin chào! Tôi là Trợ lý Tìm File</h4>
+          <ul>
+            <li>🔍 Tìm kiếm mờ (fuzzy) — không cần gõ đúng tên chính xác</li>
+            <li>👁 Đọc nội dung — Word, Excel, ảnh, text ngay trong chat</li>
+            <li>✏️ Mở & chỉnh sửa — mở bằng ứng dụng mặc định</li>
+            <li>🔄 Chuyển đổi — Word→PDF, PDF→Word</li>
+            <li>📂 Duyệt thư mục — xem vị trí tệp</li>
+          </ul>
+          {msg.suggestions && (
+            <div className="suggs" style={{marginTop:10}}>
+              {msg.suggestions.map((s,i)=>(
+                <button key={i} className="schip" onClick={()=>onSuggest(s)}>{s}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mt">{msg.time}</div>
+      </div>
+    </div>
+  );
+
+  // default text
+  return (
+    <div className="mrow bot">
+      <div className="mav">🤖</div>
+      <div style={{maxWidth:'84%'}}>
+        <div className="bub"
+          dangerouslySetInnerHTML={{__html:(msg.html||msg.text||'')
+            .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+            .replace(/\n/g,'<br/>')}}/>
+        {msg.suggestions&&(
+          <div className="suggs">
+            {msg.suggestions.map((s,i)=>(
+              <button key={i} className="schip" onClick={()=>onSuggest(s)}>{s}</button>
+            ))}
+          </div>
+        )}
+        <div className="mt">{msg.time}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Toast component ───────────────────────────────────────────────────────────
+function Toast({text}) {
+  const [key, setKey] = useState(0);
+  useEffect(()=>{ if(text) setKey(k=>k+1); },[text]);
+  if (!text) return null;
+  return <div key={key} className="toast">{text}</div>;
+}
+
+// ── Language list ─────────────────────────────────────────────────────────────
+const LANGS = [
+  { code:'vi', name:'Tiếng Việt',  flag:'🇻🇳' },
+  { code:'en', name:'Tiếng Anh',   flag:'🇬🇧' },
+  { code:'zh', name:'Tiếng Trung', flag:'🇨🇳' },
+  { code:'ja', name:'Tiếng Nhật',  flag:'🇯🇵' },
+  { code:'ko', name:'Tiếng Hàn',   flag:'🇰🇷' },
+  { code:'fr', name:'Tiếng Pháp',  flag:'🇫🇷' },
+  { code:'de', name:'Tiếng Đức',   flag:'🇩🇪' },
+  { code:'es', name:'Tiếng Tây Ba Nha', flag:'🇪🇸' },
+  { code:'th', name:'Tiếng Thái',  flag:'🇹🇭' },
+  { code:'ru', name:'Tiếng Nga',   flag:'🇷🇺' },
+  { code:'ar', name:'Tiếng Ả Rập', flag:'🇸🇦' },
+  { code:'pt', name:'Tiếng Bồ Đào Nha', flag:'🇧🇷' },
+];
+
+const QUICK_PAIRS = [
+  { label:'VI→EN', src:'vi', tgt:'en' },
+  { label:'EN→VI', src:'en', tgt:'vi' },
+  { label:'VI→ZH', src:'vi', tgt:'zh' },
+  { label:'VI→JA', src:'vi', tgt:'ja' },
+  { label:'EN→ZH', src:'en', tgt:'zh' },
+];
+
+// ── Translate function (MyMemory API — free, no key) ─────────────────────────
+async function doTranslate(text, srcLang, tgtLang) {
+  if (!text.trim()) return '';
+  // MyMemory free API: 1000 req/day, 500 chars/req
+  const chunks = [];
+  for (let i = 0; i < text.length; i += 480) chunks.push(text.slice(i, i+480));
+
+  const results = [];
+  for (const chunk of chunks) {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${srcLang}|${tgtLang}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d.responseStatus !== 200) throw new Error(d.responseDetails || 'Lỗi API dịch');
+    results.push(d.responseData.translatedText);
+  }
+  return results.join(' ');
+}
+
+// ── TranslatePanel ────────────────────────────────────────────────────────────
+function TranslatePanel({ onTranslateToChat, initText = '', initSrc = 'vi', initTgt = 'en' }) {
+  const [srcLang,  setSrcLang]  = useState(initSrc);
+  const [tgtLang,  setTgtLang]  = useState(initTgt);
+  const [srcText,  setSrcText]  = useState(initText);
+  const [result,   setResult]   = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
+  const [history,  setHistory]  = useState([]);
+
+  // Voice input for source text
+  const voice = useVoiceInput(LANG_SPEECH[srcLang] || 'vi-VN');
+
+  // re-init when external text changes (from file action)
+  useEffect(()=>{ setSrcText(initText); setSrcLang(initSrc); setTgtLang(initTgt); setResult(''); },[initText,initSrc,initTgt]);
+
+  // sync voice transcript → srcText
+  useEffect(()=>{ if (voice.transcript) setSrcText(voice.transcript.trim()); },[voice.transcript]);
+
+  // auto-translate when voice stops (ref trick to avoid stale closure)
+  const translateRef = useRef(null);
+
+  useEffect(()=>{
+    if (!voice.listening && voice.transcript.trim()) {
+      const txt = voice.transcript.trim();
+      setSrcText(txt);
+      setTimeout(()=>{ if (translateRef.current) translateRef.current(); }, 400);
+    }
+  }, [voice.listening]);
+
+  const swap = () => {
+    setSrcLang(tgtLang);
+    setTgtLang(srcLang);
+    setSrcText(result);
+    setResult(srcText);
+  };
+
+  const translate = async () => {
+    const txt = srcText.trim();
+    if (!txt) return;
+    setLoading(true);
+    setError('');
+    try {
+      const out = await doTranslate(txt, srcLang, tgtLang);
+      setResult(out);
+      setHistory(h => [{ srcLang, tgtLang, orig: txt.slice(0,80), trsl: out.slice(0,80) }, ...h.slice(0,9)]);
+    } catch(e) {
+      setError('❌ ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // keep ref in sync
+  useEffect(()=>{ translateRef.current = translate; });
+
+  const copyResult = async () => {
+    try { await navigator.clipboard.writeText(result); }
+    catch { /* ignore */ }
+  };
+
+  const sendToChat = () => {
+    if (result && onTranslateToChat) {
+      const sName = LANGS.find(l=>l.code===srcLang)?.name || srcLang;
+      const tName = LANGS.find(l=>l.code===tgtLang)?.name || tgtLang;
+      onTranslateToChat(`🌐 Dịch (${sName} → ${tName}):\n\n📝 Gốc: ${srcText}\n\n✅ Dịch: ${result}`);
+    }
+  };
+
+  const setQuick = (pair) => {
+    setSrcLang(pair.src);
+    setTgtLang(pair.tgt);
+  };
+
+  const srcFlag = LANGS.find(l=>l.code===srcLang)?.flag||'🌐';
+  const tgtFlag = LANGS.find(l=>l.code===tgtLang)?.flag||'🌐';
+
+  return (
+    <div className="trpanel">
+      {/* Quick pairs */}
+      <div>
+        <div style={{fontSize:11,color:'#9aa0a6',marginBottom:5,fontWeight:600}}>NHANH:</div>
+        <div className="tr-langs-quick">
+          {QUICK_PAIRS.map(p=>(
+            <button key={p.label}
+              className={`tr-lang-chip${srcLang===p.src&&tgtLang===p.tgt?' active':''}`}
+              onClick={()=>setQuick(p)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Lang selector row */}
+      <div className="tr-selrow">
+        <select className="tr-sel" value={srcLang} onChange={e=>setSrcLang(e.target.value)}>
+          {LANGS.map(l=><option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+        </select>
+        <button className="tr-swap" onClick={swap} title="Đổi chiều dịch">⇄</button>
+        <select className="tr-sel" value={tgtLang} onChange={e=>setTgtLang(e.target.value)}>
+          {LANGS.map(l=><option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+        </select>
+      </div>
+
+      {/* Source box */}
+      <div className="tr-box" style={voice.listening ? {borderColor:'#e53935'} : {}}>
+        <div className="tr-box-hdr">
+          {srcFlag} Văn bản nguồn
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <span>{srcText.length}/2000 ký tự</span>
+            {voice.supported && (
+              <button
+                className={`tr-mic${voice.listening?' listening':''}`}
+                onClick={()=>{
+                  if (voice.listening) { voice.stop(); }
+                  else { voice.reset(); setSrcText(''); voice.toggle(); }
+                }}
+                title={voice.listening ? 'Dừng — tự động dịch' : 'Nói văn bản nguồn'}>
+                {voice.listening ? '⏹' : '🎤'}
+              </button>
+            )}
+          </div>
+        </div>
+        {voice.listening && (
+          <div style={{padding:'4px 12px',fontSize:11.5,color:'#e53935',display:'flex',alignItems:'center',gap:6,background:'#fff8f8'}}>
+            <span style={{animation:'mic-pulse 1s infinite',display:'inline-block'}}>🔴</span>
+            {voice.interimText ? `"${voice.interimText}"` : 'Đang nghe...'}
+          </div>
+        )}
+        <textarea className="tr-textarea"
+          placeholder={voice.listening ? '🎤 Đang nghe...' : 'Nhập văn bản hoặc nhấn 🎤 để nói...'}
+          value={voice.listening
+            ? (voice.transcript + (voice.interimText ? ' '+voice.interimText : ''))
+            : srcText}
+          onChange={e=>{ if(!voice.listening) setSrcText(e.target.value.slice(0,2000)); }}
+          onKeyDown={e=>{ if(e.ctrlKey&&e.key==='Enter'){ e.preventDefault(); translate(); } }}
+          rows={4}
+          style={voice.listening ? {background:'#fff8f8',color:'#c62828'} : {}}/>
+      </div>
+
+      {/* Translate button */}
+      <div className="tr-actions">
+        <button className="tr-btn primary" onClick={translate} disabled={loading||!srcText.trim()}>
+          {loading ? <><span style={{animation:'spin 1s linear infinite',display:'inline-block'}}>⚙️</span> Đang dịch...</> : '🌐 Dịch (Ctrl+Enter)'}
+        </button>
+        {result && (
+          <>
+            <button className="tr-btn sec" onClick={copyResult} title="Sao chép kết quả">📋 Sao chép</button>
+            <button className="tr-btn sec" onClick={swap} title="Đảo chiều">⇄ Đảo chiều</button>
+            <button className="tr-btn sec" onClick={sendToChat} title="Gửi vào chat">💬 Vào chat</button>
+          </>
+        )}
+        {srcText && <button className="tr-btn sec" onClick={()=>{setSrcText('');setResult('');setError('');}}>✕ Xoá</button>}
+      </div>
+
+      {/* Result box */}
+      <div className="tr-box">
+        <div className="tr-box-hdr">
+          {tgtFlag} Kết quả dịch
+          {result && <span>{result.length} ký tự</span>}
+        </div>
+        <div className={`tr-result${loading?' loading':''}`}>
+          {loading ? 'Đang dịch...' : error || result || <span style={{color:'#bdc1c6'}}>Kết quả sẽ hiển thị tại đây</span>}
+        </div>
+      </div>
+
+      {/* History */}
+      {history.length > 0 && (
+        <div>
+          <div style={{fontSize:11,color:'#9aa0a6',marginBottom:6,fontWeight:600}}>LỊCH SỬ DỊCH:</div>
+          <div className="tr-history">
+            {history.map((h,i)=>(
+              <div key={i} className="tr-hist-item"
+                onClick={()=>{ setSrcText(h.orig); setSrcLang(h.srcLang); setTgtLang(h.tgtLang); setResult(h.trsl); }}>
+                <div className="tr-hist-src">
+                  {LANGS.find(l=>l.code===h.srcLang)?.flag} {h.srcLang.toUpperCase()} → {LANGS.find(l=>l.code===h.tgtLang)?.flag} {h.tgtLang.toUpperCase()}
+                </div>
+                <div className="tr-hist-pair">
+                  <span className="tr-hist-orig">{h.orig}{h.orig.length>=80?'…':''}</span>
+                  <span className="tr-hist-arrow">→</span>
+                  <span className="tr-hist-trsl">{h.trsl}{h.trsl.length>=80?'…':''}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{fontSize:11,color:'#bdc1c6',textAlign:'center',paddingTop:4}}>
+        Powered by MyMemory API · Miễn phí · Không cần đăng nhập
+      </div>
+    </div>
+  );
+}
+
+// ── useVoiceInput hook ────────────────────────────────────────────────────────
+// Wraps Web Speech API (SpeechRecognition). Works in Chrome/Edge.
+// lang: BCP-47 tag, e.g. 'vi-VN', 'en-US', 'zh-CN', etc.
+function useVoiceInput(lang = 'vi-VN') {
+  const [listening,   setListening]   = useState(false);
+  const [transcript,  setTranscript]  = useState('');
+  const [interimText, setInterimText] = useState('');
+  const [error,       setError]       = useState('');
+  const [supported,   setSupported]   = useState(false);
+  const recRef = useRef(null);
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setSupported(false); return; }
+    setSupported(true);
+    const rec = new SR();
+    rec.continuous      = true;   // keep recording until user stops
+    rec.interimResults  = true;   // show partial results live
+    rec.maxAlternatives = 1;
+    rec.lang = lang;
+
+    rec.onstart = () => { setListening(true); setError(''); };
+    rec.onend   = () => { setListening(false); setInterimText(''); };
+    rec.onerror = (e) => {
+      setListening(false);
+      setInterimText('');
+      if (e.error === 'not-allowed')
+        setError('Microphone bị chặn. Hãy cho phép quyền truy cập micro trong trình duyệt.');
+      else if (e.error === 'no-speech')
+        setError('Không phát hiện giọng nói. Hãy thử lại.');
+      else
+        setError(`Lỗi nhận dạng: ${e.error}`);
+    };
+    rec.onresult = (e) => {
+      let interim = '';
+      let final   = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t + ' ';
+        else interim += t;
+      }
+      if (final)   setTranscript(prev => (prev + final).trimStart());
+      if (interim) setInterimText(interim);
+    };
+
+    recRef.current = rec;
+    return () => { try { rec.stop(); } catch {} };
+  }, [lang]);
+
+  // Update lang without recreating
+  useEffect(() => {
+    if (recRef.current) recRef.current.lang = lang;
+  }, [lang]);
+
+  const start = useCallback(() => {
+    if (!recRef.current || listening) return;
+    setTranscript('');
+    setInterimText('');
+    setError('');
+    try { recRef.current.start(); } catch {}
+  }, [listening]);
+
+  const stop = useCallback(() => {
+    if (!recRef.current || !listening) return;
+    try { recRef.current.stop(); } catch {}
+  }, [listening]);
+
+  const toggle = useCallback(() => {
+    listening ? stop() : start();
+  }, [listening, start, stop]);
+
+  const reset = useCallback(() => {
+    setTranscript('');
+    setInterimText('');
+    setError('');
+  }, []);
+
+  return { listening, transcript, interimText, error, supported, toggle, stop, reset, setTranscript };
+}
+
+// ── Lang code → BCP-47 speech tag ────────────────────────────────────────────
+const LANG_SPEECH = {
+  vi:'vi-VN', en:'en-US', zh:'zh-CN', ja:'ja-JP', ko:'ko-KR',
+  fr:'fr-FR', de:'de-DE', es:'es-ES', th:'th-TH', ru:'ru-RU',
+  ar:'ar-SA', pt:'pt-BR',
+};
+
+// ── Intent: detect translate command ─────────────────────────────────────────
+function parseTranslateCmd(text) {
+  // "dịch [text] sang [lang]"  or  "translate [text] to [lang]"
+  const m1 = text.match(/(?:dịch|translate)\s+(.+?)\s+(?:sang|to|qua)\s+(.+)/i);
+  if (m1) {
+    const langMap = {
+      'anh':'en','english':'en','tiếng anh':'en',
+      'việt':'vi','vietnamese':'vi','tiếng việt':'vi',
+      'trung':'zh','chinese':'zh','tiếng trung':'zh','tàu':'zh',
+      'nhật':'ja','japanese':'ja','tiếng nhật':'ja',
+      'hàn':'ko','korean':'ko','tiếng hàn':'ko',
+      'pháp':'fr','french':'fr','tiếng pháp':'fr',
+      'đức':'de','german':'de','tiếng đức':'de',
+      'tây ban nha':'es','spanish':'es',
+      'thái':'th','thai':'th','tiếng thái':'th',
+      'nga':'ru','russian':'ru','tiếng nga':'ru',
+    };
+    const tgtKey = m1[2].toLowerCase().trim();
+    const tgt = langMap[tgtKey] || tgtKey.slice(0,2);
+    return { text: m1[1].trim(), tgt };
+  }
+  return null;
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function App() {
+  const [open,       setOpen]       = useState(false);
+  const [msgs,       setMsgs]       = useState([]);
+  const [input,      setInput]      = useState('');
+  const [busy,       setBusy]       = useState(false);
+  const [selFile,    setSelFile]    = useState(null);
+  const [status,     setStatus]     = useState({ fileCount:0, ready:false });
+  const [toast,      setToast]      = useState('');
+  const [activeExt,  setActiveExt]  = useState('');
+  const [unread,     setUnread]     = useState(0);
+  const [activeTab,  setActiveTab]  = useState('chat');   // 'chat' | 'translate' | 'browse'
+  const [trInit,     setTrInit]     = useState({ text:'', src:'vi', tgt:'en' });
+  const [voiceLang,  setVoiceLang]  = useState('vi');
+  const [darkMode,   setDarkMode]   = useState(()=> localStorage.getItem('darkMode')==='1');
+  const [showAdv,    setShowAdv]    = useState(false);    // advanced search panel
+  const [advFilters, setAdvFilters] = useState({ dateFrom:'', dateTo:'', sizeMin:'', sizeMax:'', dir:'' });
+  const [browseDir,  setBrowseDir]  = useState(null);     // current browse path
+  const [browseTree, setBrowseTree] = useState(null);
+
+  const bottomRef   = useRef(null);
+  const inputRef    = useRef(null);
+  const toastT      = useRef(null);
+  const sendMsgRef  = useRef(null); // stable ref for voice auto-send
+
+  // ── voice input (chat) ──
+  const voice = useVoiceInput(LANG_SPEECH[voiceLang] || 'vi-VN');
+
+  // ── dark mode persistence ──
+  useEffect(()=>{
+    localStorage.setItem('darkMode', darkMode ? '1' : '0');
+    document.documentElement.setAttribute('data-dark', darkMode ? '1' : '');
+  }, [darkMode]);
+
+  // ── helpers ──
+  const showToast = useCallback(msg => {
+    setToast(msg);
+    clearTimeout(toastT.current);
+    toastT.current = setTimeout(()=>setToast(''), 3000);
+  }, []);
+
+  const push = useCallback(msg => {
+    const m = { ...msg, time: FMT_TIME() };
+    setMsgs(p => {
+      const next = [...p, m];
+      // persist last 40 msgs
+      try { localStorage.setItem('chatHistory', JSON.stringify(next.slice(-40))); } catch {}
+      return next;
+    });
+    if (!open) setUnread(u => u+1);
+  }, [open]);
+
+  const replaceLast = useCallback(msg => {
+    setMsgs(p => {
+      const c = [...p];
+      c[c.length-1] = { ...msg, time: FMT_TIME() };
+      try { localStorage.setItem('chatHistory', JSON.stringify(c.slice(-40))); } catch {}
+      return c;
+    });
+  }, []);
+
+  // ── sync voice transcript → chat input ──
+  useEffect(() => {
+    if (voice.transcript) setInput(voice.transcript.trim());
+  }, [voice.transcript]);
+
+  // ── auto-send on voice stop — use ref to avoid stale closure ──
+  useEffect(() => {
+    if (!voice.listening && voice.transcript.trim()) {
+      const txt = voice.transcript.trim();
+      const t = setTimeout(() => {
+        if (sendMsgRef.current) {
+          sendMsgRef.current(txt);
+          voice.reset();
+          setInput('');
+        }
+      }, 700);
+      return () => clearTimeout(t);
+    }
+  }, [voice.listening]); // eslint-disable-line
+
+  // ── browse directory ──
+  const browseDir2 = useCallback(async (dirPath) => {
+    try {
+      const r = await fetch(`/api/tree?path=${encodeURIComponent(dirPath||'')}`);
+      const d = await r.json();
+      setBrowseTree(d);
+      setBrowseDir(d.path);
+    } catch {}
+  }, []);
+
+  // ── scroll ──
+  useEffect(()=>{
+    bottomRef.current?.scrollIntoView({ behavior:'smooth' });
+  }, [msgs]);
+
+  useEffect(()=>{
+    if (open) {
+      setUnread(0);
+      setTimeout(()=>inputRef.current?.focus(), 120);
+    }
+  }, [open]);
+
+  // ── poll status + restore history ──
+  useEffect(()=>{
+    const poll = async () => {
+      try {
+        const r = await fetch('/api/status');
+        const d = await r.json();
+        setStatus(d);
+        return d;
+      } catch { return null; }
+    };
+
+    const init = async () => {
+      const d = await poll();
+      // Try restore chat history (text-only msgs, skip actions/results which have stale callbacks)
+      let restored = [];
+      try {
+        const raw = localStorage.getItem('chatHistory');
+        if (raw) {
+          const arr = JSON.parse(raw);
+          restored = arr.filter(m => ['user','bot','welcome','preview'].includes(m.type));
+        }
+      } catch {}
+
+      if (restored.length > 0) {
+        setMsgs(restored);
+      } else if (d) {
+        const cnt = (d.fileCount||0).toLocaleString();
+        setMsgs([{
+          type:'welcome',
+          time: FMT_TIME(),
+          suggestions:[
+            '🔍 Tìm file xã Thanh Phú',
+            '📄 Tìm hợp đồng nguyên tắc',
+            '📊 Tìm danh sách khách hàng',
+            '🖼️ Tìm hình ảnh trạm bơm',
+          ],
+          fileCount: cnt,
+        }]);
+      }
+    };
+    init();
+    const iv = setInterval(poll, 8000);
+    return ()=>clearInterval(iv);
+  }, []);
+
+  // ── translate to chat ──
+  const translateToChat = useCallback((msg) => {
+    push({ type:'bot', text: msg });
+    setActiveTab('chat');
+  }, [push]);
+
+  // ── file action handler ──
+  const handleAction = useCallback(async (action, f) => {
+    switch(action) {
+
+      case 'translate': {
+        // Switch to translate tab pre-filled with filename
+        setTrInit({ text: f.nameNoExt || f.name, src:'vi', tgt:'en' });
+        setActiveTab('translate');
+        push({ type:'bot', text:`🌐 Đã mở tab **Dịch** với tên file: **${f.name}**\nChọn ngôn ngữ và nhấn **Dịch**!` });
+        break;
+      }
+
+      case 'read': {
+        push({ type:'bot', text:`⏳ Đang đọc **${f.name}**...` });
+        try {
+          const r = await fetch(`/api/read?path=${encodeURIComponent(f.path)}`);
+          const d = await r.json();
+          if (d.error) { replaceLast({type:'bot', text:`❌ ${d.error}`}); break; }
+          replaceLast({
+            type:'preview',
+            filename: f.name,
+            previewType: d.type,
+            data:    d.data,
+            content: d.content || d.message,
+            message: d.message,
+          });
+        } catch(e) {
+          replaceLast({type:'bot', text:`❌ Lỗi: ${e.message}`});
+        }
+        break;
+      }
+
+      case 'open':
+      case 'edit': {
+        try {
+          const r = await fetch('/api/open',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ filePath: f.path })
+          });
+          const d = await r.json();
+          if (d.success)
+            push({type:'bot', text:`✅ Đã mở **${f.name}** bằng ứng dụng mặc định.`});
+          else
+            push({type:'bot', text:`❌ Không mở được: ${d.error}`});
+        } catch(e) {
+          push({type:'bot', text:`❌ ${e.message}`});
+        }
+        break;
+      }
+
+      case 'word2pdf': {
+        push({type:'bot', text:`🔄 Đang chuyển **${f.name}** → PDF...`});
+        try {
+          const r = await fetch('/api/convert/word2pdf',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ filePath: f.path })
+          });
+          const d = await r.json();
+          if (d.success)
+            replaceLast({type:'bot',
+              text:`✅ Chuyển đổi thành công!\n\n📄 Tệp PDF đã lưu tại:\n**${d.outPath}**`,
+              suggestions:['🚀 Mở file PDF vừa tạo'],
+              onSuggest: ()=>handleAction('open',{...f,path:d.outPath,name:d.outPath.split('\\').pop()})
+            });
+          else
+            replaceLast({type:'bot', text:`❌ ${d.error}`});
+        } catch(e) {
+          replaceLast({type:'bot', text:`❌ ${e.message}`});
+        }
+        break;
+      }
+
+      case 'pdf2word': {
+        push({type:'bot', text:`🔄 Đang chuyển **${f.name}** → Word...`});
+        try {
+          const r = await fetch('/api/convert/pdf2word',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ filePath: f.path })
+          });
+          const d = await r.json();
+          if (d.success)
+            replaceLast({type:'bot',
+              text:`✅ Chuyển đổi thành công!\n\n📝 File Word đã lưu tại:\n**${d.outPath}**`,
+              suggestions:['🚀 Mở file Word vừa tạo'],
+              onSuggest: ()=>handleAction('open',{...f,path:d.outPath,name:d.outPath.split('\\').pop()})
+            });
+          else if (d.needInstall)
+            replaceLast({type:'bot',
+              text:`⚠️ ${d.error}\n\nHoặc dùng công cụ online:\n🌐 https://pdf2doc.com`});
+          else
+            replaceLast({type:'bot', text:`❌ ${d.error}`});
+        } catch(e) {
+          replaceLast({type:'bot', text:`❌ ${e.message}`});
+        }
+        break;
+      }
+
+      case 'copypath': {
+        try {
+          // Try clipboard API first, fallback to server-side clip.exe
+          await navigator.clipboard.writeText(f.path);
+          showToast('✅ Đã sao chép đường dẫn vào clipboard!');
+        } catch {
+          await fetch('/api/copypath',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ filePath: f.path })
+          });
+          showToast('✅ Đã sao chép vào clipboard!');
+        }
+        break;
+      }
+
+      case 'folder': {
+        try {
+          await fetch('/api/open',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ filePath: f.path, openFolder: true })
+          });
+          push({type:'bot', text:`📂 Đã mở thư mục chứa **${f.name}**.`});
+        } catch(e) {
+          push({type:'bot', text:`❌ ${e.message}`});
+        }
+        break;
+      }
+
+      case 'info': {
+        push({type:'bot',
+          text:`ℹ️ **Thông tin tệp**\n\n📄 **Tên:** ${f.name}\n📁 **Thư mục:** ${f.dir}\n🗂 **Định dạng:** ${(f.ext||'').toUpperCase().replace('.','')}\n💾 **Dung lượng:** ${f.size}\n📅 **Ngày sửa:** ${f.modified}\n\n📍 **Đường dẫn:**\n${f.path}`
+        });
+        break;
+      }
+    }
+  }, [push, replaceLast, showToast]);
+
+  // ── file select → show action bar ──
+  const onFileSelect = useCallback(file => {
+    setSelFile(file);
+    push({
+      type:     'actions',
+      file,
+      onAction: handleAction,
+    });
+  }, [push, handleAction]);
+
+  // ── send message ──
+  const sendMsg = useCallback(async (override) => {
+    const text = (override || input).trim();
+    if (!text || busy) return;
+    setInput('');
+    setBusy(true);
+
+    push({ type:'user', text });
+
+    await new Promise(r => setTimeout(r,150));
+
+    const lower = text.toLowerCase();
+
+    // ── Search flow ──
+    if (isSearch(text)) {
+      const q = extractQ(text);
+      push({ type:'scanning', total: status.fileCount||0 });
+
+      try {
+        // Build URL with advanced filters
+        let url = `/api/search?q=${encodeURIComponent(q)}&limit=20${activeExt?'&ext='+encodeURIComponent(activeExt):''}`;
+        if (advFilters.dateFrom) url += `&dateFrom=${advFilters.dateFrom}`;
+        if (advFilters.dateTo)   url += `&dateTo=${advFilters.dateTo}`;
+        if (advFilters.sizeMin)  url += `&sizeMin=${advFilters.sizeMin}`;
+        if (advFilters.sizeMax)  url += `&sizeMax=${advFilters.sizeMax}`;
+        if (advFilters.dir)      url += `&dir=${encodeURIComponent(advFilters.dir)}`;
+        const r   = await fetch(url);
+        const d   = await r.json();
+
+        setStatus(s=>({...s, fileCount: d.indexSize||s.fileCount}));
+
+        const n = d.results?.length||0;
+        replaceLast({
+          type:    'results',
+          text:    n>0
+            ? `Đã quét <strong>${(d.indexSize||0).toLocaleString()}</strong> tệp — tìm thấy <strong>${n}</strong> kết quả cho "<em>${q}</em>":`
+            : null,
+          results: d.results||[],
+        });
+
+        if (n===0) {
+          push({
+            type:'bot',
+            text:`Không tìm thấy tệp nào khớp với "<strong>${q}</strong>".\n\nGợi ý:\n• Thử từ khóa ngắn hơn\n• Bỏ bộ lọc loại file\n• Kiểm tra lại tên`,
+            suggestions:['🔄 Làm mới chỉ mục','📊 Xem thống kê','Tôi làm được gì?'],
+          });
+        }
+      } catch(e) {
+        replaceLast({type:'bot', text:`❌ Lỗi tìm kiếm: ${e.message}\nKiểm tra server đang chạy.`});
+      }
+
+      setBusy(false);
+      return;
+    }
+
+    // ── Translate command in chat ──
+    const trCmd = parseTranslateCmd(text);
+    if (trCmd || /^(?:dịch|translate)\b/i.test(lower)) {
+      if (trCmd) {
+        push({ type:'bot', text:`⏳ Đang dịch sang **${trCmd.tgt.toUpperCase()}**...` });
+        try {
+          const out = await doTranslate(trCmd.text, 'auto', trCmd.tgt);
+          replaceLast({ type:'bot',
+            text:`🌐 **Kết quả dịch:**\n\n📝 Gốc: ${trCmd.text}\n✅ Dịch (${trCmd.tgt.toUpperCase()}): **${out}**`,
+            suggestions:[
+              '🌐 Mở công cụ dịch đầy đủ',
+            ],
+          });
+        } catch(e) {
+          replaceLast({ type:'bot', text:`❌ Lỗi dịch: ${e.message}` });
+        }
+      } else {
+        // just "dịch" without text → open translate tab
+        setActiveTab('translate');
+        push({ type:'bot',
+          text:`🌐 Đã mở **Tab Dịch**!\n\nNhập văn bản và chọn ngôn ngữ để dịch.\n\nHoặc gõ nhanh: **"dịch [văn bản] sang [ngôn ngữ]"**`,
+          suggestions:['dịch hello world sang tiếng việt','dịch xin chào sang tiếng anh'],
+        });
+      }
+      setBusy(false);
+      return;
+    }
+
+    // open translate tab suggestion
+    if (/mở.*dịch|công.*cụ.*dịch|tab.*dịch/i.test(lower)) {
+      setActiveTab('translate');
+      push({ type:'bot', text:`🌐 Đã mở **Tab Dịch**!` });
+      setBusy(false);
+      return;
+    }
+
+    // ── Conversation ──
+    let reply='', suggs=null;
+
+    if (/xin\s*chào|hello|hi\b/i.test(lower)) {
+      reply = `Chào bạn! 😊 Tôi đang quản lý **${(status.fileCount||0).toLocaleString()} tệp**.\nHãy nhập tên file cần tìm!`;
+      suggs = ['Tìm hợp đồng','Tìm file PDF','Tìm hình ảnh'];
+
+    } else if (/cảm\s*ơn|thanks/i.test(lower)) {
+      reply = `Không có gì! 😊 Cần tìm thêm gì cứ hỏi tôi nhé!`;
+
+    } else if (/bao\s*nhiêu|số\s*lượng|tổng\s*số/i.test(lower)) {
+      try {
+        const r = await fetch('/api/stats');
+        const d = await r.json();
+        reply = `📊 **Thống kê kho tệp:**\n\n📁 Tổng: **${d.total?.toLocaleString()} tệp**\n💾 Dung lượng: **${d.totalSize}**\n📅 Cập nhật: ${d.lastIndexed?.slice(0,10)||'—'}\n\n**Top loại file:**\n${d.topExts?.map(e=>`${e.icon} ${e.ext} — ${e.count}`).join('\n')||'—'}`;
+      } catch {
+        reply = `📊 Hiện có **${(status.fileCount||0).toLocaleString()} tệp** trong kho.`;
+      }
+
+    } else if (/thống\s*kê|stat/i.test(lower)) {
+      try {
+        const r = await fetch('/api/stats');
+        const d = await r.json();
+        reply = `📊 **${d.total?.toLocaleString()} tệp** — **${d.totalSize}**\n\n${d.topExts?.map(e=>`${e.icon} **${e.ext||'(không rõ)'}**: ${e.count} tệp`).join('\n')}`;
+      } catch { reply = 'Không lấy được thống kê.'; }
+
+    } else if (/làm\s*được\s*gì|chức\s*năng|giúp\s*(gì|tôi)|hướng\s*dẫn/i.test(lower)) {
+      reply = `Tôi có thể:\n\n🔍 **Tìm kiếm fuzzy** — không cần gõ đúng tên, tìm cả tiếng Việt không dấu\n👁 **Đọc nội dung** — Word (.docx), Excel, ảnh, text\n✏️ **Mở & chỉnh sửa** — mở bằng ứng dụng mặc định\n🔄 **Chuyển đổi** — Word→PDF, PDF→Word\n🌐 **Dịch ngôn ngữ** — VI↔EN↔ZH↔JA↔KO và nhiều ngôn ngữ khác\n📋 **Sao chép đường dẫn** — copy path vào clipboard\n📂 **Mở thư mục** — xem vị trí file trong Explorer`;
+      suggs = ['Tìm file xã Thanh Phú','🌐 Mở công cụ dịch','📊 Xem thống kê'];
+
+    } else if (/làm\s*mới|refresh|cập\s*nhật\s*chỉ\s*mục/i.test(lower)) {
+      try {
+        const r = await fetch('/api/refresh',{method:'POST'});
+        const d = await r.json();
+        reply = `🔄 ${d.message}`;
+      } catch { reply = '❌ Không thể kết nối server.'; }
+
+    } else {
+      // fallback: auto-search
+      push({ type:'scanning', total: status.fileCount||0 });
+      try {
+        const r = await fetch(`/api/search?q=${encodeURIComponent(text)}&limit=15${activeExt?'&ext='+encodeURIComponent(activeExt):''}`);
+        const d = await r.json();
+        const n = d.results?.length||0;
+        replaceLast({
+          type:    'results',
+          text:    n>0 ? `Kết quả cho "<em>${text}</em>":` : null,
+          results: d.results||[],
+        });
+        if (n===0) {
+          push({type:'bot',
+            text:`Không tìm thấy kết quả. Thử:\n• "Tìm tệp xã thanh phú"\n• "Kiếm hợp đồng 2023"\n• Hỏi tôi: "làm được gì?"`,
+            suggestions:['Tìm file PDF','Tìm hợp đồng','Làm được gì?']
+          });
+        }
+      } catch {
+        push({type:'bot', text:'Xin lỗi, không thể kết nối server. Hãy kiểm tra server đang chạy.'});
+      }
+      setBusy(false);
+      return;
+    }
+
+    push({ type:'bot', text:reply, suggestions:suggs });
+    setBusy(false);
+  }, [input, busy, push, replaceLast, status, activeExt, advFilters, handleAction]);
+
+  // ── keep sendMsgRef current so voice auto-send never gets stale closure ──
+  useEffect(() => { sendMsgRef.current = sendMsg; });
+
+  const onKey = e => {
+    if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  };
+
+  // ── refresh badge ──
+  const doRefresh = async () => {
+    try {
+      const r = await fetch('/api/refresh',{method:'POST'});
+      const d = await r.json();
+      showToast('🔄 ' + d.message);
+    } catch { showToast('❌ Không thể kết nối server'); }
+  };
+
+  return (<>
+    {/* Launcher */}
+    <button id="fab" onClick={()=>setOpen(o=>!o)} title="Trợ lý tìm file">
+      <span>{open?'✕':'📂'}</span>
+      <span className={`badge${unread>0?' show':''}`}>{unread>9?'9+':unread}</span>
+    </button>
+
+    {/* Chat window */}
+    <div className={`cw ${open?'on':'off'}`}>
+
+      {/* Header */}
+      <div className="ch">
+        <div className="ch-av">📂</div>
+        <div className="ch-info">
+          <h3>Trợ Lý Tìm File</h3>
+          <p>
+            <span className={`sdot${busy?' busy':''}`}/>
+            {busy ? 'Đang xử lý...' :
+              status.fileCount>0
+                ? `${status.fileCount.toLocaleString()} tệp • Sẵn sàng`
+                : 'Đang khởi tạo...'}
+          </p>
+        </div>
+        <div className="ch-actions">
+          <button className="ch-btn" title={darkMode?'Sáng':'Tối'} onClick={()=>setDarkMode(d=>!d)}>{darkMode?'☀️':'🌙'}</button>
+          <button className="ch-btn" title="Duyệt thư mục" onClick={()=>{ setActiveTab('browse'); browseDir2(''); }}>📁</button>
+          <button className="ch-btn" title="Công cụ dịch" onClick={()=>setActiveTab(t=>t==='translate'?'chat':'translate')}>🌐</button>
+          <button className="ch-btn" title="Làm mới chỉ mục" onClick={doRefresh}>🔄</button>
+          <button className="ch-btn" title="Đóng" onClick={()=>setOpen(false)}>✕</button>
+        </div>
+      </div>
+
+      {/* Tab bar */}
+      <div className="tabbar">
+        <button className={`tab${activeTab==='chat'?' active':''}`} onClick={()=>setActiveTab('chat')}>
+          💬 Chat
+        </button>
+        <button className={`tab${activeTab==='translate'?' active':''}`} onClick={()=>setActiveTab('translate')}>
+          🌐 Dịch
+        </button>
+        <button className={`tab${activeTab==='browse'?' active':''}`} onClick={()=>{ setActiveTab('browse'); if(!browseTree) browseDir2(''); }}>
+          📁 Duyệt
+        </button>
+      </div>
+
+      {/* Chat tab */}
+      {activeTab==='chat' && (<>
+        {/* Filter bar */}
+        <div className="fbar">
+          {FILTERS.map(f=>(
+            <button key={f.val}
+              className={`ftag${activeExt===f.val?' active':''}`}
+              onClick={()=>setActiveExt(f.val)}>
+              {f.icon} {f.label}
+            </button>
+          ))}
+          <button
+            className={`ftag${showAdv?' active':''}`}
+            onClick={()=>setShowAdv(s=>!s)}
+            title="Bộ lọc nâng cao">
+            ⚙️ Lọc
+          </button>
+        </div>
+
+        {/* Advanced search panel */}
+        {showAdv && (
+          <div className="advpanel">
+            <div className="advpanel-title">⚙️ BỘ LỌC NÂNG CAO</div>
+            <div className="advrow">
+              <span className="adv-lbl">📅 Từ</span>
+              <input type="date" className="advinput" value={advFilters.dateFrom}
+                onChange={e=>setAdvFilters(f=>({...f,dateFrom:e.target.value}))}/>
+              <span className="adv-lbl">đến</span>
+              <input type="date" className="advinput" value={advFilters.dateTo}
+                onChange={e=>setAdvFilters(f=>({...f,dateTo:e.target.value}))}/>
+            </div>
+            <div className="advrow">
+              <span className="adv-lbl">💾 Size</span>
+              <input type="number" className="advinput" placeholder="Min KB" value={advFilters.sizeMin}
+                onChange={e=>setAdvFilters(f=>({...f,sizeMin:e.target.value}))}/>
+              <span className="adv-lbl">–</span>
+              <input type="number" className="advinput" placeholder="Max KB" value={advFilters.sizeMax}
+                onChange={e=>setAdvFilters(f=>({...f,sizeMax:e.target.value}))}/>
+            </div>
+            <div className="advrow">
+              <span className="adv-lbl">📂 Thư mục</span>
+              <input type="text" className="advinput" placeholder="VD: Dir_001" value={advFilters.dir}
+                onChange={e=>setAdvFilters(f=>({...f,dir:e.target.value}))}/>
+              <button className="advclear"
+                onClick={()=>setAdvFilters({dateFrom:'',dateTo:'',sizeMin:'',sizeMax:'',dir:''})}>
+                ✕ Xoá
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Messages */}
+        <div className="msgs">
+          {msgs.map((m,i)=>(
+            <Msg key={i} msg={m}
+              onFileSelect={onFileSelect}
+              selFile={selFile}
+              onSuggest={sendMsg}/>
+          ))}
+          <div ref={bottomRef}/>
+        </div>
+
+        {/* Voice status bar */}
+        {voice.supported && voice.listening && (
+          <div className="voice-bar">
+            <div className="vdots"><span/><span/><span/></div>
+            <span>Đang nghe{voice.interimText ? `: "${voice.interimText}"` : '...'}</span>
+            <button style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',color:'#c62828',fontWeight:700,fontSize:12}}
+              onClick={voice.stop}>■ Dừng</button>
+          </div>
+        )}
+        {voice.supported && voice.error && (
+          <div className="voice-bar" style={{background:'#fff3e0',borderColor:'#ffe0b2',color:'#e65100'}}>
+            ⚠️ {voice.error}
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="ia">
+          <textarea ref={inputRef} className="cinput" rows={1}
+            placeholder={voice.listening ? '🎤 Đang nghe giọng nói...' : 'Tìm file hoặc "dịch hello sang tiếng việt"…'}
+            value={voice.listening
+              ? (voice.transcript + (voice.interimText ? ' ' + voice.interimText : ''))
+              : input}
+            onChange={e=>{ if (!voice.listening) setInput(e.target.value); }}
+            onKeyDown={onKey}
+            disabled={busy}
+            style={voice.listening ? {borderColor:'#e53935',background:'#fff8f8'} : {}}/>
+          {voice.supported && (
+            <button
+              className={`bmic${voice.listening?' listening':''}`}
+              onClick={()=>{
+                if (voice.listening) { voice.stop(); }
+                else { voice.reset(); setInput(''); voice.toggle(); }
+              }}
+              disabled={busy}
+              title={voice.listening ? 'Dừng ghi âm (gửi tự động)' : `Nhập bằng giọng nói (${LANG_SPEECH[voiceLang]||'vi-VN'})`}>
+              {voice.listening ? '⏹' : '🎤'}
+            </button>
+          )}
+          <button className="bsend"
+            onClick={()=>{ if(voice.listening){ voice.stop(); } else { sendMsg(); } }}
+            disabled={(!input.trim() && !voice.transcript.trim() && !voice.listening) || busy}
+            title="Gửi (Enter)">
+            ➤
+          </button>
+        </div>
+
+        {/* Voice lang row */}
+        {voice.supported && (
+          <div style={{padding:'3px 12px 7px',display:'flex',alignItems:'center',gap:5,flexShrink:0,borderTop:'1px solid #f5f5f5'}}>
+            <span style={{fontSize:10,color:'#9aa0a6',fontWeight:600,flexShrink:0}}>🎤</span>
+            {[{c:'vi',f:'🇻🇳',n:'VI'},{c:'en',f:'🇬🇧',n:'EN'},{c:'zh',f:'🇨🇳',n:'ZH'},{c:'ja',f:'🇯🇵',n:'JA'},{c:'ko',f:'🇰🇷',n:'KO'},{c:'fr',f:'🇫🇷',n:'FR'}].map(l=>(
+              <button key={l.c}
+                onClick={()=>setVoiceLang(l.c)}
+                title={LANG_SPEECH[l.c]}
+                style={{
+                  padding:'1px 7px',borderRadius:20,fontSize:11,cursor:'pointer',
+                  fontWeight:700,border:'1.5px solid',transition:'all .12s',
+                  background: voiceLang===l.c ? '#e53935':'#fff',
+                  borderColor: voiceLang===l.c ? '#e53935':'#e0e0e0',
+                  color: voiceLang===l.c ? '#fff':'#757575',
+                }}>
+                {l.f} {l.n}
+              </button>
+            ))}
+          </div>
+        )}
+        {!voice.supported && (
+          <div style={{padding:'2px 14px 6px',fontSize:11,color:'#bdc1c6',flexShrink:0}}>
+            ℹ️ Dùng Chrome/Edge để bật nhập liệu bằng giọng nói.
+          </div>
+        )}
+        {/* Clear history button */}
+        <div style={{padding:'4px 12px 6px',borderTop:'1px solid #f5f5f5',display:'flex',gap:6,flexShrink:0}}>
+          <button style={{
+            fontSize:10.5,color:'#9aa0a6',background:'none',border:'none',
+            cursor:'pointer',padding:'2px 6px',borderRadius:6,
+          }}
+            onClick={()=>{
+              try{localStorage.removeItem('chatHistory');}catch{}
+              setMsgs([{type:'welcome',time:FMT_TIME(),
+                suggestions:['🔍 Tìm file xã Thanh Phú','📄 Tìm hợp đồng','📊 Thống kê']}]);
+            }}>
+            🗑 Xoá lịch sử
+          </button>
+        </div>
+      </>)}
+
+      {/* Translate tab */}
+      {activeTab==='translate' && (
+        <TranslatePanel
+          key={`${trInit.text}-${trInit.src}-${trInit.tgt}`}
+          initText={trInit.text}
+          initSrc={trInit.src}
+          initTgt={trInit.tgt}
+          onTranslateToChat={translateToChat}/>
+      )}
+
+      {/* Browse tab */}
+      {activeTab==='browse' && (
+        <div className="fbrowser">
+          {/* Breadcrumb */}
+          <div className="fb-crumb">
+            <span style={{cursor:'pointer',color:'#1565c0',fontWeight:700}}
+              onClick={()=>browseDir2('')}>🏠 Gốc</span>
+            {browseDir && browseDir.split('\\').filter(Boolean).map((seg,i,arr)=>(
+              <span key={i}>
+                <span style={{color:'#9aa0a6',margin:'0 3px'}}>/</span>
+                <span style={{cursor:'pointer',color:'#1565c0'}}
+                  onClick={()=>browseDir2(arr.slice(0,i+1).join('\\'))}>{seg}</span>
+              </span>
+            ))}
+          </div>
+
+          {!browseTree ? (
+            <div style={{textAlign:'center',color:'#9aa0a6',padding:20}}>Đang tải...</div>
+          ) : browseTree.children?.length === 0 ? (
+            <div style={{textAlign:'center',color:'#9aa0a6',padding:20}}>📂 Thư mục trống</div>
+          ) : browseTree.children?.map((item,i)=>(
+            <div key={i}
+              className={`fb-item ${item.isDir?'fb-dir':'fb-file'}`}
+              onClick={()=>{
+                if (item.isDir) browseDir2(item.path);
+                else onFileSelect({
+                  name: item.name,
+                  nameNoExt: item.name.replace(/\.[^.]+$/,''),
+                  path: item.path,
+                  dir: browseDir ? browseDir.replace(/^.*[\\\/]/,'') : '',
+                  ext: item.ext,
+                  icon: item.icon,
+                  size: item.size||'',
+                  modified:'',
+                  score:100,
+                });
+              }}>
+              <span className="fb-ic">{item.icon}</span>
+              <span className="fb-name">{item.name}</span>
+              {item.size && <span className="fb-sz">{item.size}</span>}
+              {item.isDir && <span style={{fontSize:10,color:'#9aa0a6'}}>›</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <Toast text={toast}/>
+  </>);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
