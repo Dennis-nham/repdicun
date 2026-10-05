@@ -9,6 +9,13 @@
  * then from this Worker to the AI provider — it is never stored or logged.
  * ─────────────────────────────────────────────────────────────────────────────
  */
+// Safe JSON parse — returns [data, null] or [null, rawText]
+async function safeJson(res) {
+  const text = await res.text();
+  try { return [JSON.parse(text), null]; }
+  catch { return [null, text]; }
+}
+
 export async function onRequestPost(context) {
   const { request } = context;
 
@@ -90,15 +97,15 @@ Context file hiện tại: ${fileContext || 'không có'}`;
         body: JSON.stringify(geminiBody),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        const errMsg = data?.error?.message || JSON.stringify(data);
-        return new Response(JSON.stringify({ error: errMsg }), { status: res.status, headers: corsHeaders });
+      const [data, rawText] = await safeJson(res);
+      if (!res.ok || !data) {
+        const errMsg = data?.error?.message || rawText || `HTTP ${res.status}`;
+        return new Response(JSON.stringify({ error: `Gemini: ${errMsg}` }), { status: res.status || 502, headers: corsHeaders });
       }
       aiResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     } else {
-      // OpenAI-compatible format (OpenAI, Groq, Mistral, Custom)
+      // OpenAI-compatible format (OpenAI, Groq, Mistral, IBM Bob, Custom)
       const messages = [
         { role: 'system', content: systemPrompt },
         ...history.slice(-10).map(h => ({ role: h.role, content: h.content })),
@@ -109,15 +116,20 @@ Context file hiện tại: ${fileContext || 'không có'}`;
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': cfg.auth,
+          ...(cfg.auth ? { 'Authorization': cfg.auth } : {}),
           ...cfg.extra,
         },
         body: JSON.stringify({ model: chosenModel, messages, temperature: 0.7, max_tokens: 1024 }),
       });
 
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        const errMsg = data?.error?.message || JSON.stringify(data.error || data);
+      const [data, rawText] = await safeJson(res);
+      if (!res.ok || !data) {
+        // Non-JSON response — gateway/proxy error (e.g. Cloudflare 1016, 502, nginx error page)
+        const errMsg = rawText?.slice(0, 200) || `HTTP ${res.status}`;
+        return new Response(JSON.stringify({ error: `${provider} API lỗi (${res.status}): ${errMsg}` }), { status: res.status || 502, headers: corsHeaders });
+      }
+      if (data.error) {
+        const errMsg = data.error?.message || JSON.stringify(data.error);
         return new Response(JSON.stringify({ error: errMsg }), { status: res.status || 400, headers: corsHeaders });
       }
       aiResponse = data?.choices?.[0]?.message?.content || '';
