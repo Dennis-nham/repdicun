@@ -480,12 +480,18 @@ app.post('/api/ai', async (req, res) => {
   if (!message) return res.status(400).json({ error: 'Thiếu message.' });
 
   // ── Build provider config ──────────────────────────────────────────────────
+  // teamId is passed in baseUrl field when provider=bob (General key needs X-Team-ID)
+  const bobTeamId = (provider === 'bob') ? (baseUrl || '') : '';
   const PROVIDERS = {
-    openai:   { url: 'https://api.openai.com/v1/chat/completions',        defaultModel: 'gpt-4o-mini',         authHeader: `Bearer ${apiKey}` },
-    groq:     { url: 'https://api.groq.com/openai/v1/chat/completions',   defaultModel: 'llama-3.1-8b-instant', authHeader: `Bearer ${apiKey}` },
-    mistral:  { url: 'https://api.mistral.ai/v1/chat/completions',        defaultModel: 'mistral-small-latest', authHeader: `Bearer ${apiKey}` },
-    gemini:   { url: `https://generativelanguage.googleapis.com/v1beta/models/${model||'gemini-1.5-flash'}:generateContent?key=${apiKey}`, defaultModel: 'gemini-1.5-flash', authHeader: null },
-    custom:   { url: baseUrl || '', defaultModel: model || 'gpt-4o-mini', authHeader: `Bearer ${apiKey}` },
+    openai:   { url: 'https://api.openai.com/v1/chat/completions',                  defaultModel: 'gpt-4o-mini',          authHeader: `Bearer ${apiKey}`,   extraHeaders: {} },
+    groq:     { url: 'https://api.groq.com/openai/v1/chat/completions',             defaultModel: 'llama-3.1-8b-instant', authHeader: `Bearer ${apiKey}`,   extraHeaders: {} },
+    mistral:  { url: 'https://api.mistral.ai/v1/chat/completions',                  defaultModel: 'mistral-small-latest', authHeader: `Bearer ${apiKey}`,   extraHeaders: {} },
+    gemini:   { url: `https://generativelanguage.googleapis.com/v1beta/models/${model||'gemini-1.5-flash'}:generateContent?key=${apiKey}`, defaultModel: 'gemini-1.5-flash', authHeader: null, extraHeaders: {} },
+    // IBM Bob Inference API — OpenAI-compatible endpoint
+    // Inference key: no extra headers needed
+    // General key:   pass Team ID via baseUrl field, added as X-Team-ID header
+    bob:      { url: 'https://inference.bob.ibm.com/v1/chat/completions',           defaultModel: 'ibm/granite-3-3-8b-instruct', authHeader: `Bearer ${apiKey}`, extraHeaders: bobTeamId ? { 'X-Team-ID': bobTeamId } : {} },
+    custom:   { url: baseUrl || '',                                                  defaultModel: model || 'gpt-4o-mini',         authHeader: `Bearer ${apiKey}`, extraHeaders: {} },
   };
 
   const cfg = PROVIDERS[provider] || PROVIDERS.openai;
@@ -536,6 +542,7 @@ Context file hiện tại (nếu có): ${fileContext || 'không có'}`;
       const data = await httpsPost(endpoint, body, {
         'Content-Type': 'application/json',
         'Authorization': cfg.authHeader,
+        ...cfg.extraHeaders,
       });
       if (data.error) return res.status(400).json({ error: data.error.message || JSON.stringify(data.error) });
       responseText = data?.choices?.[0]?.message?.content || '';

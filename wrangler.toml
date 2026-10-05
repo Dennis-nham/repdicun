@@ -1,6 +1,24 @@
-# Cloudflare Pages — static site, no Worker build needed.
-# Build command in dashboard: (empty)
-# Build output directory: public
-name = "file-chat-app"
-compatibility_date = "2024-01-15"
-pages_build_output_dir = "public"
+# Cloudflare Pages — static site + Pages Functions
+# ─────────────────────────────────────────────────────────────────────────────
+# Build settings (set in Cloudflare Dashboard → Pages → Build & deployments):
+#   Framework preset : None
+#   Build command    : (empty)
+#   Output directory : public
+# ─────────────────────────────────────────────────────────────────────────────
+
+name                    = "repdicun"
+compatibility_date      = "2025-01-01"
+compatibility_flags     = ["nodejs_compat"]
+pages_build_output_dir  = "public"
+
+# ── Environment variables (set secrets in Pages Dashboard, not here) ─────────
+# Dashboard → repdicun → Settings → Environment variables:
+#
+#   LOCAL_API_URL  (optional)
+#     URL của máy chủ Node.js local, qua Cloudflare Tunnel.
+#     Ví dụ: https://your-tunnel.trycloudflare.com
+#     Để trống nếu chỉ dùng chế độ demo + AI.
+#
+# AI keys KHÔNG cần khai báo ở đây — chúng được người dùng nhập trực tiếp
+# trong modal cài đặt AI và lưu trong localStorage của trình duyệt.
+# Key chỉ đi từ trình duyệt → Edge Worker → AI provider, không lưu server.

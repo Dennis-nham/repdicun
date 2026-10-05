@@ -613,6 +613,70 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
 [data-dark='1'] .ai-test.idle{background:#272740;color:#888}
 [data-dark='1'] .ai-label{color:#bbb}
 
+/* ── Hardware Panel ── */
+.hwpanel{
+  flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;
+  background:#fff;
+}
+.hwpanel::-webkit-scrollbar{width:4px}
+.hwpanel::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+.hw-section{border:1.5px solid #e8eaed;border-radius:12px;overflow:hidden}
+.hw-sec-hdr{
+  padding:9px 14px;background:#f8f9fa;border-bottom:1px solid #e8eaed;
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:700;color:#37474f;cursor:pointer;
+  transition:background .12s;user-select:none;
+}
+.hw-sec-hdr:hover{background:#f0f2f5}
+.hw-sec-hdr .hw-icon{font-size:16px;flex-shrink:0}
+.hw-sec-hdr .hw-st{margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
+.hw-st.on {background:#e8f5e9;color:#2e7d32}
+.hw-st.off{background:#f0f2f5;color:#9aa0a6}
+.hw-st.na {background:#fff8e1;color:#f57f17}
+.hw-sec-body{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.hw-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hw-lbl{font-size:11.5px;color:#5f6368;flex:1;min-width:80px}
+.hw-val{font-size:12px;font-weight:700;color:#1f2328;text-align:right}
+.hw-btn{
+  padding:6px 14px;border-radius:20px;border:1.5px solid;font-size:11.5px;
+  font-weight:700;cursor:pointer;transition:all .13s;display:flex;align-items:center;gap:5px;
+  white-space:nowrap;
+}
+.hw-btn.primary{background:#1565c0;border-color:#1565c0;color:#fff}
+.hw-btn.primary:hover{background:#0d47a1}
+.hw-btn.primary:disabled{background:#dadce0;border-color:#dadce0;color:#9aa0a6;cursor:not-allowed}
+.hw-btn.danger{background:#fff;border-color:#c62828;color:#c62828}
+.hw-btn.danger:hover{background:#c62828;color:#fff}
+.hw-btn.sec{background:#fff;border-color:#dadce0;color:#5f6368}
+.hw-btn.sec:hover{border-color:#1565c0;color:#1565c0}
+/* camera preview */
+.hw-cam{
+  width:100%;aspect-ratio:4/3;border-radius:8px;background:#0f0f1a;
+  object-fit:cover;display:block;
+}
+.hw-qr-result{
+  padding:8px 10px;background:#e8f5e9;border-radius:8px;font-size:12px;
+  color:#1b5e20;word-break:break-all;display:flex;align-items:flex-start;gap:6px;
+}
+.hw-batt-bar{
+  height:10px;border-radius:6px;background:#e0e0e0;overflow:hidden;flex:1;
+}
+.hw-batt-fill{
+  height:100%;border-radius:6px;transition:width .5s;
+}
+.hw-net-badge{
+  padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+}
+/* dark mode */
+[data-dark='1'] .hwpanel{background:#1c1c2e}
+[data-dark='1'] .hw-section{border-color:#333}
+[data-dark='1'] .hw-sec-hdr{background:#232336;color:#ccc;border-color:#333}
+[data-dark='1'] .hw-sec-hdr:hover{background:#2a2a46}
+[data-dark='1'] .hw-sec-body{background:#1c1c2e}
+[data-dark='1'] .hw-lbl{color:#888}
+[data-dark='1'] .hw-val{color:#ddd}
+[data-dark='1'] .hw-btn.sec{background:#232336;border-color:#444;color:#aaa}
+
 /* ── Responsive / Mobile ── */
 @media(max-width:600px){
   .cw{
@@ -1333,11 +1397,13 @@ function parseTranslateCmd(text) {
 
 // ── AI Provider definitions ──────────────────────────────────────────────────
 const AI_PROVIDERS = [
-  { id:'openai',  name:'OpenAI',       icon:'🤖', sub:'GPT-4o / o1',         models:['gpt-4o-mini','gpt-4o','gpt-3.5-turbo','o1-mini'] },
-  { id:'groq',    name:'Groq',         icon:'⚡', sub:'Llama 3 — Miễn phí',  models:['llama-3.1-8b-instant','llama-3.3-70b-versatile','mixtral-8x7b-32768'] },
-  { id:'gemini',  name:'Gemini',       icon:'✨', sub:'Google AI — Miễn phí', models:['gemini-1.5-flash','gemini-1.5-pro','gemini-2.0-flash'] },
-  { id:'mistral', name:'Mistral',      icon:'🌊', sub:'EU — Tiết kiệm',       models:['mistral-small-latest','mistral-medium-latest','open-mixtral-8x7b'] },
-  { id:'custom',  name:'Custom URL',   icon:'🔧', sub:'OpenAI-compatible',   models:[] },
+  // id, keyLabel: tên trường nhập key, teamIdField: có hiện ô Team ID không
+  { id:'bob',     name:'IBM Bob',      icon:'🔵', sub:'Granite · Llama — IBM',   models:['ibm/granite-3-3-8b-instruct','ibm/granite-3-2-8b-instruct','meta-llama/llama-3-3-70b-instruct'], keyLabel:'Bob Inference API Key', teamIdField:true  },
+  { id:'openai',  name:'OpenAI',       icon:'🤖', sub:'GPT-4o / o1',              models:['gpt-4o-mini','gpt-4o','gpt-3.5-turbo','o1-mini'],                                              keyLabel:'OpenAI API Key',        teamIdField:false },
+  { id:'groq',    name:'Groq',         icon:'⚡', sub:'Llama 3 — Miễn phí',      models:['llama-3.1-8b-instant','llama-3.3-70b-versatile','mixtral-8x7b-32768'],                          keyLabel:'Groq API Key',          teamIdField:false },
+  { id:'gemini',  name:'Gemini',       icon:'✨', sub:'Google AI — Miễn phí',    models:['gemini-1.5-flash','gemini-1.5-pro','gemini-2.0-flash'],                                         keyLabel:'Gemini API Key',        teamIdField:false },
+  { id:'mistral', name:'Mistral',      icon:'🌊', sub:'EU — Tiết kiệm',          models:['mistral-small-latest','mistral-medium-latest','open-mixtral-8x7b'],                             keyLabel:'Mistral API Key',       teamIdField:false },
+  { id:'custom',  name:'Custom URL',   icon:'🔧', sub:'OpenAI-compatible',       models:[],                                                                                               keyLabel:'API Key',               teamIdField:false },
 ];
 
 // ── useAI hook — manages AI config stored in localStorage ────────────────────
@@ -1460,17 +1526,28 @@ function AISettingsModal({ onClose, aiCfg, onSave }) {
             </div>
           </div>
 
+          {/* IBM Bob info banner */}
+          {provider==='bob' && (
+            <div style={{background:'#e8f0fe',borderRadius:10,padding:'10px 12px',fontSize:11.5,color:'#1565c0',lineHeight:1.6}}>
+              <strong>🔵 IBM Bob Inference API</strong><br/>
+              Lấy key tại <a href="https://bob.ibm.com" target="_blank" rel="noreferrer" style={{color:'#1565c0',fontWeight:700}}>bob.ibm.com</a> → Account → API Keys<br/>
+              Chọn loại key:<br/>
+              • <strong>Inference key</strong> — chỉ cần key, không cần Team ID<br/>
+              • <strong>General key</strong> — cần thêm Team ID vào ô bên dưới
+            </div>
+          )}
+
           {/* API Key */}
           <div className="ai-field">
             <div className="ai-label">
-              API Key
+              {provDef.keyLabel || 'API Key'}
               <span>— Lưu trong trình duyệt, không gửi lên internet</span>
             </div>
             <div style={{display:'flex',gap:6}}>
               <input
                 className="ai-input" style={{flex:1}}
                 type={showKey?'text':'password'}
-                placeholder={`Dán ${provDef.name} API key vào đây...`}
+                placeholder={`Dán ${provDef.keyLabel || provDef.name + ' API key'} vào đây...`}
                 value={apiKey}
                 onChange={e=>{ setApiKey(e.target.value); setTestSt('idle'); setTestMsg(''); }}/>
               <button onClick={()=>setShowKey(s=>!s)}
@@ -1478,7 +1555,7 @@ function AISettingsModal({ onClose, aiCfg, onSave }) {
                 {showKey?'🙈':'👁'}
               </button>
             </div>
-            {/* Quick link to get key */}
+            {/* Quick links */}
             {provider==='groq' && (
               <div style={{fontSize:10.5,color:'#1565c0',marginTop:2}}>
                 🆓 Groq miễn phí — lấy key tại <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{color:'#1565c0'}}>console.groq.com/keys</a>
@@ -1495,6 +1572,17 @@ function AISettingsModal({ onClose, aiCfg, onSave }) {
               </div>
             )}
           </div>
+
+          {/* Bob: Team ID field (chỉ dùng cho General key) */}
+          {provDef.teamIdField && (
+            <div className="ai-field">
+              <div className="ai-label">Team ID <span>— chỉ cần nếu dùng General key</span></div>
+              <input className="ai-input"
+                placeholder="Để trống nếu dùng Inference key"
+                value={baseUrl}
+                onChange={e=>{ setBaseUrl(e.target.value); setTestSt('idle'); setTestMsg(''); }}/>
+            </div>
+          )}
 
           {/* Model selector */}
           <div className="ai-field">
@@ -1550,6 +1638,356 @@ function AISettingsModal({ onClose, aiCfg, onSave }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── useHardware hook ─────────────────────────────────────────────────────────
+// Provides unified access to device hardware APIs with graceful degradation.
+function useHardware() {
+  // ── Battery ──
+  const [battery, setBattery] = useState(null); // { level, charging, chargingTime, dischargingTime }
+  useEffect(() => {
+    if (!navigator.getBattery) return;
+    let bat;
+    const update = b => setBattery({
+      level: Math.round(b.level * 100),
+      charging: b.charging,
+      chargingTime: b.chargingTime,
+      dischargingTime: b.dischargingTime,
+    });
+    navigator.getBattery().then(b => {
+      bat = b;
+      update(b);
+      b.addEventListener('levelchange', () => update(b));
+      b.addEventListener('chargingchange', () => update(b));
+    });
+    return () => { if (bat) { bat.removeEventListener('levelchange', ()=>{}); bat.removeEventListener('chargingchange', ()=>{}); } };
+  }, []);
+
+  // ── Network ──
+  const [network, setNetwork] = useState(() => {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return c ? { type: c.effectiveType || c.type, downlink: c.downlink, rtt: c.rtt, saveData: c.saveData, online: navigator.onLine } : { online: navigator.onLine };
+  });
+  useEffect(() => {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const update = () => setNetwork({
+      type: c?.effectiveType || c?.type || '?',
+      downlink: c?.downlink,
+      rtt: c?.rtt,
+      saveData: c?.saveData,
+      online: navigator.onLine,
+    });
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    if (c) c.addEventListener('change', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+      if (c) c.removeEventListener('change', update);
+    };
+  }, []);
+
+  // ── Geolocation ──
+  const [geo, setGeo] = useState(null);   // { lat, lng, accuracy, timestamp } | 'denied' | null
+  const requestGeo = useCallback(() => {
+    if (!navigator.geolocation) { setGeo('unsupported'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => setGeo({ lat: pos.coords.latitude.toFixed(5), lng: pos.coords.longitude.toFixed(5), accuracy: Math.round(pos.coords.accuracy), timestamp: new Date(pos.timestamp).toLocaleTimeString('vi-VN') }),
+      err => setGeo(err.code === 1 ? 'denied' : 'error'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+    setGeo('loading');
+  }, []);
+
+  // ── Screen Wake Lock ──
+  const [wakeLock, setWakeLock]     = useState(null);
+  const [wakeActive, setWakeActive] = useState(false);
+  const toggleWakeLock = useCallback(async () => {
+    if (!('wakeLock' in navigator)) return;
+    if (wakeActive && wakeLock) {
+      await wakeLock.release();
+      setWakeLock(null); setWakeActive(false);
+    } else {
+      try {
+        const wl = await navigator.wakeLock.request('screen');
+        wl.addEventListener('release', () => setWakeActive(false));
+        setWakeLock(wl); setWakeActive(true);
+      } catch {}
+    }
+  }, [wakeActive, wakeLock]);
+
+  // ── Vibration ──
+  const vibrate = useCallback((pattern = [100]) => {
+    if ('vibrate' in navigator) navigator.vibrate(pattern);
+  }, []);
+
+  // ── Device orientation ──
+  const [orient, setOrient] = useState(() => screen.orientation?.type || '?');
+  useEffect(() => {
+    const h = () => setOrient(screen.orientation?.type || '?');
+    screen.orientation?.addEventListener('change', h);
+    return () => screen.orientation?.removeEventListener('change', h);
+  }, []);
+
+  // ── Device memory & CPU ──
+  const hwInfo = {
+    memory:     navigator.deviceMemory   ? `${navigator.deviceMemory} GB` : null,
+    cpuCores:   navigator.hardwareConcurrency || null,
+    platform:   navigator.platform || null,
+    touchPoints: navigator.maxTouchPoints || 0,
+    pixelRatio:  window.devicePixelRatio || 1,
+    screenW:     screen.width,
+    screenH:     screen.height,
+  };
+
+  return { battery, network, geo, requestGeo, wakeActive, toggleWakeLock, vibrate, orient, hwInfo };
+}
+
+// ── HardwarePanel ─────────────────────────────────────────────────────────────
+function HardwarePanel({ onSendToChat }) {
+  const { battery, network, geo, requestGeo, wakeActive, toggleWakeLock, vibrate, orient, hwInfo } = useHardware();
+  const [camOn,    setCamOn]    = useState(false);
+  const [qrResult, setQrResult] = useState('');
+  const [qrErr,    setQrErr]    = useState('');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const qrTimerRef = useRef(null);
+
+  // ── Camera / QR ──────────────────────────────────────────────────────────
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCamOn(true); setQrErr('');
+      // Load jsQR lazily from CDN
+      if (!window.jsQR) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      // Scan frame every 400ms
+      const scan = () => {
+        const v = videoRef.current;
+        if (!v || !v.videoWidth) { qrTimerRef.current = setTimeout(scan, 400); return; }
+        const canvas = document.createElement('canvas');
+        canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+        canvas.getContext('2d').drawImage(v, 0, 0);
+        const img = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(img.data, img.width, img.height);
+        if (code) {
+          setQrResult(code.data);
+          vibrate([60, 40, 60]);
+          stopCamera();
+        } else {
+          qrTimerRef.current = setTimeout(scan, 400);
+        }
+      };
+      qrTimerRef.current = setTimeout(scan, 800);
+    } catch(e) {
+      setQrErr(e.name === 'NotAllowedError' ? 'Quyền camera bị từ chối. Hãy cho phép trong trình duyệt.' : e.message);
+    }
+  }, [vibrate]);
+
+  const stopCamera = useCallback(() => {
+    clearTimeout(qrTimerRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    setCamOn(false);
+  }, []);
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  // ── Battery color ──
+  const battColor = battery ? (battery.level > 50 ? '#2e7d32' : battery.level > 20 ? '#f57f17' : '#c62828') : '#bbb';
+  const wakeSupported = 'wakeLock' in navigator;
+  const geoSupported  = 'geolocation' in navigator;
+  const camSupported  = !!(navigator.mediaDevices?.getUserMedia);
+  const vibSupported  = 'vibrate' in navigator;
+
+  return (
+    <div className="hwpanel">
+
+      {/* ── Camera / QR Scanner ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">📷</span> Camera & QR Scanner
+          <span className={`hw-st ${camSupported ? (camOn?'on':'off') : 'na'}`}>
+            {camSupported ? (camOn ? 'Đang quét' : 'Sẵn sàng') : 'Không hỗ trợ'}
+          </span>
+        </div>
+        <div className="hw-sec-body">
+          {camOn && <video ref={videoRef} className="hw-cam" autoPlay playsInline muted/>}
+          {qrResult && (
+            <div className="hw-qr-result">
+              ✅ <span style={{flex:1}}><strong>QR:</strong> {qrResult}</span>
+              <button className="hw-btn sec" style={{fontSize:10.5}} onClick={()=>{ onSendToChat(`📷 QR scan: ${qrResult}`); setQrResult(''); }}>→ Chat</button>
+            </div>
+          )}
+          {qrErr && <div style={{fontSize:11.5,color:'#c62828'}}>⚠️ {qrErr}</div>}
+          <div className="hw-row">
+            {!camOn ? (
+              <button className="hw-btn primary" disabled={!camSupported} onClick={startCamera}>
+                📷 Bật camera quét QR
+              </button>
+            ) : (
+              <button className="hw-btn danger" onClick={stopCamera}>⏹ Tắt camera</button>
+            )}
+            {qrResult && <button className="hw-btn sec" onClick={()=>setQrResult('')}>✕ Xoá</button>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Battery ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">🔋</span> Pin
+          <span className={`hw-st ${battery ? 'on' : 'na'}`}>{battery ? `${battery.level}%` : 'N/A'}</span>
+        </div>
+        {battery && (
+          <div className="hw-sec-body">
+            <div className="hw-row">
+              <div className="hw-batt-bar">
+                <div className="hw-batt-fill" style={{width:`${battery.level}%`, background: battColor}}/>
+              </div>
+              <span className="hw-val" style={{color: battColor}}>{battery.level}%</span>
+            </div>
+            <div className="hw-row">
+              <span className="hw-lbl">Trạng thái</span>
+              <span className="hw-val">{battery.charging ? '⚡ Đang sạc' : '🔋 Dùng pin'}</span>
+            </div>
+            {battery.charging && battery.chargingTime !== Infinity && (
+              <div className="hw-row">
+                <span className="hw-lbl">Đầy pin sau</span>
+                <span className="hw-val">{Math.round(battery.chargingTime/60)} phút</span>
+              </div>
+            )}
+            {!battery.charging && battery.dischargingTime !== Infinity && (
+              <div className="hw-row">
+                <span className="hw-lbl">Còn dùng được</span>
+                <span className="hw-val">{Math.round(battery.dischargingTime/3600*10)/10} giờ</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Network ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">📶</span> Mạng
+          <span className={`hw-st ${network.online ? 'on' : 'off'}`}>{network.online ? 'Online' : 'Offline'}</span>
+        </div>
+        <div className="hw-sec-body">
+          <div className="hw-row">
+            <span className="hw-lbl">Loại kết nối</span>
+            <span className="hw-val">{network.type || '?'}</span>
+          </div>
+          {network.downlink != null && (
+            <div className="hw-row">
+              <span className="hw-lbl">Tốc độ ước tính</span>
+              <span className="hw-val">{network.downlink} Mbps</span>
+            </div>
+          )}
+          {network.rtt != null && (
+            <div className="hw-row">
+              <span className="hw-lbl">Độ trễ (RTT)</span>
+              <span className="hw-val">{network.rtt} ms</span>
+            </div>
+          )}
+          {network.saveData && (
+            <div style={{fontSize:11,color:'#f57f17'}}>⚡ Chế độ tiết kiệm dữ liệu đang bật</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Screen Wake Lock ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">💡</span> Giữ sáng màn hình
+          <span className={`hw-st ${wakeSupported ? (wakeActive?'on':'off') : 'na'}`}>
+            {wakeSupported ? (wakeActive ? 'Đang bật' : 'Tắt') : 'Không hỗ trợ'}
+          </span>
+        </div>
+        <div className="hw-sec-body">
+          <div style={{fontSize:11.5,color:'#5f6368'}}>Ngăn màn hình tắt khi đang đọc tài liệu.</div>
+          <button
+            className={`hw-btn ${wakeActive ? 'danger' : 'primary'}`}
+            disabled={!wakeSupported}
+            onClick={toggleWakeLock}>
+            {wakeActive ? '🌙 Tắt giữ sáng' : '💡 Bật giữ sáng'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Geolocation ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">📍</span> Vị trí GPS
+          <span className={`hw-st ${geo && geo !== 'denied' && geo !== 'error' && geo !== 'unsupported' && geo !== 'loading' ? 'on' : geo === 'denied' ? 'off' : 'na'}`}>
+            {geo === null ? 'Chưa yêu cầu' : geo === 'loading' ? 'Đang lấy...' : geo === 'denied' ? 'Bị từ chối' : geo === 'error' ? 'Lỗi' : geo === 'unsupported' ? 'N/A' : 'Đã lấy'}
+          </span>
+        </div>
+        <div className="hw-sec-body">
+          {geo && typeof geo === 'object' ? (
+            <>
+              <div className="hw-row"><span className="hw-lbl">Latitude</span><span className="hw-val">{geo.lat}</span></div>
+              <div className="hw-row"><span className="hw-lbl">Longitude</span><span className="hw-val">{geo.lng}</span></div>
+              <div className="hw-row"><span className="hw-lbl">Độ chính xác</span><span className="hw-val">±{geo.accuracy}m</span></div>
+              <div className="hw-row">
+                <button className="hw-btn sec" style={{fontSize:10.5}} onClick={()=>onSendToChat(`📍 Vị trí: ${geo.lat}, ${geo.lng} (±${geo.accuracy}m) — https://maps.google.com?q=${geo.lat},${geo.lng}`)}>→ Gửi vào chat</button>
+                <a className="hw-btn sec" style={{fontSize:10.5,textDecoration:'none'}} href={`https://maps.google.com?q=${geo.lat},${geo.lng}`} target="_blank" rel="noreferrer">🗺 Google Maps</a>
+              </div>
+            </>
+          ) : (
+            <button className="hw-btn primary" disabled={!geoSupported} onClick={requestGeo}>
+              📍 Lấy vị trí hiện tại
+            </button>
+          )}
+          {(geo === 'denied' || geo === 'error') && <div style={{fontSize:11,color:'#c62828'}}>⚠️ {geo === 'denied' ? 'Quyền vị trí bị từ chối.' : 'Không lấy được vị trí.'}</div>}
+        </div>
+      </div>
+
+      {/* ── Vibration ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">📳</span> Rung (Haptic)
+          <span className={`hw-st ${vibSupported ? 'on' : 'na'}`}>{vibSupported ? 'Hỗ trợ' : 'N/A'}</span>
+        </div>
+        <div className="hw-sec-body">
+          <div className="hw-row" style={{flexWrap:'wrap',gap:6}}>
+            <button className="hw-btn sec" disabled={!vibSupported} onClick={()=>vibrate([100])}>💬 Ngắn</button>
+            <button className="hw-btn sec" disabled={!vibSupported} onClick={()=>vibrate([200,100,200])}>📳 Kép</button>
+            <button className="hw-btn sec" disabled={!vibSupported} onClick={()=>vibrate([100,50,100,50,300])}>🎶 Nhịp</button>
+            <button className="hw-btn danger" disabled={!vibSupported} onClick={()=>vibrate([0])}>⏹ Dừng</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Device Info ── */}
+      <div className="hw-section">
+        <div className="hw-sec-hdr">
+          <span className="hw-icon">💻</span> Thông tin thiết bị
+          <span className="hw-st on">Sẵn sàng</span>
+        </div>
+        <div className="hw-sec-body">
+          {hwInfo.memory    && <div className="hw-row"><span className="hw-lbl">RAM</span><span className="hw-val">{hwInfo.memory}</span></div>}
+          {hwInfo.cpuCores  && <div className="hw-row"><span className="hw-lbl">CPU cores</span><span className="hw-val">{hwInfo.cpuCores} lõi</span></div>}
+          <div className="hw-row"><span className="hw-lbl">Màn hình</span><span className="hw-val">{hwInfo.screenW}×{hwInfo.screenH} @{hwInfo.pixelRatio}x</span></div>
+          <div className="hw-row"><span className="hw-lbl">Cảm ứng</span><span className="hw-val">{hwInfo.touchPoints > 0 ? `✅ ${hwInfo.touchPoints} điểm` : '❌ Không'}</span></div>
+          <div className="hw-row"><span className="hw-lbl">Xoay màn hình</span><span className="hw-val">{orient}</span></div>
+          {hwInfo.platform  && <div className="hw-row"><span className="hw-lbl">Platform</span><span className="hw-val">{hwInfo.platform}</span></div>}
+          <button className="hw-btn sec" style={{marginTop:4,fontSize:10.5}}
+            onClick={()=>onSendToChat(`💻 Thiết bị: ${hwInfo.screenW}×${hwInfo.screenH} @${hwInfo.pixelRatio}x · ${hwInfo.cpuCores||'?'} lõi · RAM ${hwInfo.memory||'?'} · Cảm ứng ${hwInfo.touchPoints} · ${orient}`)}>
+            → Gửi vào chat
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }
@@ -2148,6 +2586,9 @@ function App() {
         <button className={`tab${activeTab==='browse'?' active':''}`} onClick={()=>{ setActiveTab('browse'); if(!browseTree) browseDir2(''); }}>
           📁 Duyệt
         </button>
+        <button className={`tab${activeTab==='hardware'?' active':''}`} onClick={()=>setActiveTab('hardware')}>
+          📱 HW
+        </button>
       </div>
 
       {/* Chat tab */}
@@ -2308,6 +2749,11 @@ function App() {
           initSrc={trInit.src}
           initTgt={trInit.tgt}
           onTranslateToChat={translateToChat}/>
+      )}
+
+      {/* Hardware tab */}
+      {activeTab==='hardware' && (
+        <HardwarePanel onSendToChat={msg => { push({ type:'bot', text: msg }); setActiveTab('chat'); }}/>
       )}
 
       {/* Browse tab */}
