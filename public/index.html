@@ -1296,18 +1296,25 @@ function TranslatePanel({ onTranslateToChat, initText = '', initSrc = 'vi', init
   );
 }
 
-// ── Secure context check ──────────────────────────────────────────────────────
-// Web Speech API requires a secure context (HTTPS or localhost).
-// On LAN (192.168.x / 10.x) over plain HTTP it will always be blocked.
+// ── Secure context detection ──────────────────────────────────────────────────
+// Web Speech API + getUserMedia require a Secure Context (HTTPS or localhost).
+// When running on LAN via HTTP the server auto-redirects :3579→:3580 (HTTPS).
 const IS_SECURE = window.isSecureContext;
+const _h   = window.location.hostname;
+const _port = window.location.port;
+// Build the HTTPS upgrade URL: same host, port 3580
+const HTTPS_URL = (() => {
+  if (IS_SECURE) return null; // already secure, no banner needed
+  const httpsPort = '3580';
+  return `https://${_h}:${httpsPort}${window.location.pathname}`;
+})();
+
 const MIC_FIX_HINT = (() => {
-  const h = window.location.hostname;
-  const isLAN = h.startsWith('192.168.') || h.startsWith('10.') || h.startsWith('172.');
-  if (!IS_SECURE && isLAN)
-    return `Trang đang mở qua HTTP trên mạng LAN → trình duyệt tự chặn micro.\n\nCách mở khoá:\n• Chrome: vào chrome://flags → tìm "Insecure origins treated as secure" → thêm http://${h}:PORT → Relaunch\n• Hoặc truy cập qua https:// nếu server có SSL\n• Hoặc dùng từ máy chủ: http://localhost:PORT (luôn được phép)`;
-  if (!IS_SECURE)
-    return 'Micro chỉ hoạt động trên HTTPS hoặc localhost. Hãy truy cập qua https://.';
-  return null;
+  if (IS_SECURE) return null;
+  const isLAN = _h.startsWith('192.168.') || _h.startsWith('10.') || _h.startsWith('172.');
+  if (isLAN)
+    return `Micro & camera cần HTTPS.\n\nServer đã tự tạo HTTPS tại port 3580 — nhấn nút "🔒 Chuyển sang HTTPS" ở trên để mở.\nLần đầu trình duyệt hỏi "Not secure" → nhấn Advanced → Proceed → micro hoạt động ngay.`;
+  return 'Micro chỉ hoạt động trên HTTPS hoặc localhost. Hãy dùng https://.';
 })();
 
 // ── useVoiceInput hook ────────────────────────────────────────────────────────
@@ -2654,18 +2661,29 @@ function App() {
 
       {/* Chat tab */}
       {activeTab==='chat' && (<>
-        {/* HTTP warning banner — only on non-secure LAN context */}
-        {!IS_SECURE && (
+        {/* HTTPS upgrade banner — shown only on HTTP, dismissed once user goes HTTPS */}
+        {!IS_SECURE && HTTPS_URL && (
           <div style={{
-            padding:'6px 12px',background:'#fff8e1',borderBottom:'1px solid #ffe082',
-            fontSize:11,color:'#5d4037',display:'flex',alignItems:'flex-start',gap:7,flexShrink:0,
+            padding:'7px 12px',background:'#e8f5e9',borderBottom:'1px solid #a5d6a7',
+            fontSize:11,color:'#1b5e20',display:'flex',alignItems:'center',gap:8,flexShrink:0,flexWrap:'wrap',
           }}>
-            <span style={{flexShrink:0}}>⚠️</span>
-            <span style={{lineHeight:1.5}}>
-              Trang đang chạy qua <strong>HTTP</strong> → micro & camera bị chặn bởi trình duyệt.<br/>
-              Để dùng voice: mở Chrome → <code style={{fontSize:10,background:'#efebe9',borderRadius:3,padding:'0 3px'}}>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> → thêm địa chỉ này → Relaunch.<br/>
-              Hoặc truy cập qua <strong>localhost</strong> trên máy chủ.
-            </span>
+            <span>🔓 HTTP → micro & camera bị chặn</span>
+            <a href={HTTPS_URL}
+              style={{
+                marginLeft:'auto',padding:'4px 12px',background:'#2e7d32',color:'#fff',
+                borderRadius:20,fontWeight:700,fontSize:11,textDecoration:'none',flexShrink:0,
+                display:'flex',alignItems:'center',gap:5,
+              }}>
+              🔒 Chuyển sang HTTPS
+            </a>
+          </div>
+        )}
+        {!IS_SECURE && !HTTPS_URL && (
+          <div style={{
+            padding:'5px 12px',background:'#fff8e1',borderBottom:'1px solid #ffe082',
+            fontSize:10.5,color:'#5d4037',flexShrink:0,
+          }}>
+            ⚠️ HTTP: micro & camera không khả dụng. Dùng localhost hoặc HTTPS.
           </div>
         )}
         {/* Filter bar */}

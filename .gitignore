@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 .env
 .env.local
 *.log
@@ -9,3 +9,4 @@ dist/
 .wrangler/
 *.bat
 *.ps1
+.certs/

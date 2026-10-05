@@ -4,14 +4,17 @@ const fs       = require('fs');
 const path     = require('path');
 const https    = require('https');
 const http     = require('http');
+const crypto   = require('crypto');
 const { exec, execFile } = require('child_process');
 const mammoth  = require('mammoth');
 const XLSX     = require('xlsx');
 const Fuse     = require('fuse.js');
 
-const app  = express();
-const PORT = 3579;
-const ROOT_DIR = path.resolve(__dirname, '..');
+const app       = express();
+const PORT      = 3579;
+const PORT_HTTPS = 3580;
+const ROOT_DIR  = path.resolve(__dirname, '..');
+const CERT_DIR  = path.join(__dirname, '.certs');
 
 app.set('trust proxy', true);  // trust X-Forwarded-For from proxies
 app.use(cors());
@@ -586,17 +589,114 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-  const lanIPs = [];
-  for (const ifaces of Object.values(nets)) {
-    for (const iface of ifaces) {
-      if (iface.family === 'IPv4' && !iface.internal) lanIPs.push(iface.address);
+// ─── Self-signed certificate generator ───────────────────────────────────────
+// Uses only built-in node:crypto — no external package needed.
+// Generates a minimal self-signed X.509 cert valid for 10 years.
+// Saved to .certs/ so it persists across restarts (browser can trust it once).
+function ensureSelfSignedCert() {
+  const keyFile  = path.join(CERT_DIR, 'key.pem');
+  const certFile = path.join(CERT_DIR, 'cert.pem');
+  if (fs.existsSync(keyFile) && fs.existsSync(certFile)) {
+    return { key: fs.readFileSync(keyFile), cert: fs.readFileSync(certFile) };
+  }
+  // node:crypto generateKeyPairSync + X509Certificate added in Node 15+
+  // For Node 14 compat we fall back to a bundled tiny cert or skip HTTPS
+  try {
+    const { generateKeyPairSync, X509Certificate } = crypto;
+    if (!generateKeyPairSync) throw new Error('no generateKeyPairSync');
+
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+
+    // Use forge-free DER builder via built-in: Node ≥17 has crypto.X509Certificate
+    // but cannot *create* certs. Use openssl via child_process as fallback.
+    throw new Error('use openssl fallback');
+  } catch {
+    // ── openssl fallback (available on most systems including Windows w/ Git) ──
+    try {
+      if (!fs.existsSync(CERT_DIR)) fs.mkdirSync(CERT_DIR, { recursive: true });
+      const { execSync } = require('child_process');
+
+      // Try openssl (Git for Windows ships it at this path)
+      const opensslPaths = [
+        'openssl',
+        'C:\\Program Files\\Git\\usr\\bin\\openssl.exe',
+        'C:\\Program Files (x86)\\Git\\usr\\bin\\openssl.exe',
+      ];
+      let opensslCmd = null;
+      for (const p of opensslPaths) {
+        try { execSync(`"${p}" version`, { stdio: 'ignore' }); opensslCmd = p; break; } catch {}
+      }
+      if (!opensslCmd) throw new Error('openssl not found');
+
+      const { networkInterfaces } = require('os');
+      const nets = networkInterfaces();
+      const lanIPs = [];
+      for (const ifaces of Object.values(nets)) {
+        for (const iface of ifaces) {
+          if (iface.family === 'IPv4' && !iface.internal) lanIPs.push(iface.address);
+        }
+      }
+      const sanIPs = ['127.0.0.1', 'localhost', ...lanIPs].map(ip =>
+        ip === 'localhost' ? `DNS:localhost` : `IP:${ip}`
+      ).join(',');
+
+      const cnfContent = `[req]\ndistinguished_name=req\n[san]\nsubjectAltName=${sanIPs}\n`;
+      const cnfFile = path.join(CERT_DIR, 'san.cnf');
+      fs.writeFileSync(cnfFile, cnfContent);
+
+      execSync(
+        `"${opensslCmd}" req -x509 -newkey rsa:2048 -keyout "${keyFile}" -out "${certFile}" ` +
+        `-days 3650 -nodes -subj "/CN=FileChat-LAN" ` +
+        `-extensions san -config "${cnfFile}"`,
+        { stdio: 'ignore' }
+      );
+      console.log(`🔐 Self-signed cert tạo tại: ${CERT_DIR}`);
+      return { key: fs.readFileSync(keyFile), cert: fs.readFileSync(certFile) };
+    } catch (e2) {
+      console.warn('⚠️  Không tạo được HTTPS cert:', e2.message);
+      return null;
     }
   }
-  console.log(`\n🚀 File Chat App  →  http://localhost:${PORT}  (máy chủ)`);
-  if (lanIPs.length) console.log(`🌐 Truy cập từ LAN  →  http://${lanIPs[0]}:${PORT}`);
-  console.log(`📂 Root: ${ROOT_DIR}\n`);
-  exec(`start http://localhost:${PORT}`, { shell: 'cmd.exe' });
+}
+
+// ─── Start HTTP + HTTPS servers ───────────────────────────────────────────────
+const { networkInterfaces } = require('os');
+const nets = networkInterfaces();
+const lanIPs = [];
+for (const ifaces of Object.values(nets)) {
+  for (const iface of ifaces) {
+    if (iface.family === 'IPv4' && !iface.internal) lanIPs.push(iface.address);
+  }
+}
+
+// HTTP: redirect to HTTPS (same IP, port 3580)
+const httpApp = express();
+httpApp.use((req, res) => {
+  const httpsUrl = `https://${req.hostname}:${PORT_HTTPS}${req.originalUrl}`;
+  res.redirect(301, httpsUrl);
 });
+http.createServer(httpApp).listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀 File Chat App`);
+  console.log(`   HTTP  → http://localhost:${PORT}  (chuyển hướng → HTTPS)`);
+});
+
+// HTTPS: main server
+const tlsCreds = ensureSelfSignedCert();
+if (tlsCreds) {
+  https.createServer(tlsCreds, app).listen(PORT_HTTPS, '0.0.0.0', () => {
+    console.log(`   HTTPS → https://localhost:${PORT_HTTPS}  ✅ micro & camera hoạt động`);
+    if (lanIPs.length)
+      console.log(`   HTTPS → https://${lanIPs[0]}:${PORT_HTTPS}  (LAN — chấp nhận cảnh báo cert)`);
+    console.log(`📂 Root: ${ROOT_DIR}\n`);
+    console.log(`💡 LAN HTTPS: trình duyệt sẽ cảnh báo "Not secure" lần đầu → nhấn Advanced → Proceed`);
+    exec(`start https://localhost:${PORT_HTTPS}`, { shell: 'cmd.exe' });
+  });
+} else {
+  // Fallback: run on plain HTTP if cert creation failed
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`   HTTP  → http://localhost:${PORT}  (HTTPS không khả dụng)`);
+    if (lanIPs.length) console.log(`   LAN   → http://${lanIPs[0]}:${PORT}`);
+    console.log(`📂 Root: ${ROOT_DIR}\n`);
+    exec(`start http://localhost:${PORT}`, { shell: 'cmd.exe' });
+  });
+}
