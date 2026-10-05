@@ -12,107 +12,108 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebee;min-height:100vh}
 
-/* ── Launcher ── */
+/* ── Launcher FAB ── */
 #fab{
-  position:fixed;bottom:24px;right:24px;width:58px;height:58px;
-  border-radius:50%;background:linear-gradient(135deg,#1565c0,#0d47a1);
-  border:none;cursor:pointer;box-shadow:0 4px 18px rgba(21,101,192,.5);
+  position:fixed;bottom:22px;right:22px;width:52px;height:52px;
+  border-radius:50%;background:linear-gradient(135deg,#1877f2,#0d47a1);
+  border:none;cursor:pointer;box-shadow:0 3px 14px rgba(21,101,192,.55);
   display:flex;align-items:center;justify-content:center;
-  font-size:24px;z-index:9999;transition:transform .2s,box-shadow .2s;
+  font-size:22px;z-index:9999;transition:transform .18s,box-shadow .18s;
   color:#fff;
 }
-#fab:hover{transform:scale(1.1);box-shadow:0 6px 26px rgba(21,101,192,.65)}
+#fab:hover{transform:scale(1.08);box-shadow:0 5px 20px rgba(21,101,192,.65)}
 #fab .badge{
-  position:absolute;top:-4px;right:-4px;background:#e53935;
-  color:#fff;border-radius:10px;font-size:10px;font-weight:700;
-  padding:1px 5px;min-width:18px;text-align:center;
+  position:absolute;top:-3px;right:-3px;background:#e53935;
+  color:#fff;border-radius:10px;font-size:9px;font-weight:700;
+  padding:1px 4px;min-width:16px;text-align:center;
   border:2px solid #fff;display:none;
 }
 #fab .badge.show{display:block}
 
-/* ── Window ── */
+/* ── Chat Window ── */
 .cw{
-  position:fixed;bottom:94px;right:24px;
-  width:460px;height:680px;
-  background:#fff;border-radius:16px;
-  box-shadow:0 16px 56px rgba(0,0,0,.2);
+  position:fixed;bottom:84px;right:20px;
+  width:400px;height:600px;
+  background:#fff;border-radius:18px;
+  box-shadow:0 12px 48px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.08);
   display:flex;flex-direction:column;overflow:hidden;
   z-index:9998;
-  transition:opacity .22s,transform .22s;
+  transition:opacity .2s,transform .2s;
   transform-origin:bottom right;
 }
-.cw.off{opacity:0;pointer-events:none;transform:scale(.93) translateY(12px)}
-.cw.on {opacity:1;transform:scale(1)   translateY(0)}
+.cw.off{opacity:0;pointer-events:none;transform:scale(.9) translateY(14px)}
+.cw.on {opacity:1;transform:scale(1) translateY(0)}
 
-/* ── Header ── */
+/* ── Header — compact single row ── */
 .ch{
-  background:linear-gradient(135deg,#1565c0,#0d47a1);
-  padding:12px 16px;display:flex;align-items:center;gap:10px;
-  flex-shrink:0;
+  background:linear-gradient(135deg,#1877f2,#0d47a1);
+  padding:9px 12px;display:flex;align-items:center;gap:8px;
+  flex-shrink:0;min-height:48px;
 }
 .ch-av{
-  width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);
-  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+  width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
 }
-.ch-info h3{color:#fff;font-size:14px;font-weight:700;line-height:1.2}
-.ch-info p {color:rgba(255,255,255,.75);font-size:11px;margin-top:1px}
+.ch-info{flex:1;min-width:0}
+.ch-info h3{color:#fff;font-size:13px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-info p {color:rgba(255,255,255,.72);font-size:10px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sdot{
-  width:7px;height:7px;border-radius:50%;background:#4caf50;
-  display:inline-block;margin-right:4px;animation:pulse 2s infinite;
+  width:6px;height:6px;border-radius:50%;background:#4caf50;
+  display:inline-block;margin-right:3px;animation:pulse 2s infinite;
 }
 .sdot.busy{background:#ff9800}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-.ch-actions{margin-left:auto;display:flex;gap:6px}
+.ch-actions{display:flex;gap:3px;flex-shrink:0}
 .ch-btn{
-  background:rgba(255,255,255,.15);border:none;color:#fff;
-  width:30px;height:30px;border-radius:50%;cursor:pointer;
-  font-size:14px;transition:background .15s;display:flex;align-items:center;justify-content:center;
+  background:transparent;border:none;color:rgba(255,255,255,.85);
+  width:28px;height:28px;border-radius:8px;cursor:pointer;
+  font-size:13px;transition:background .13s;display:flex;align-items:center;justify-content:center;
 }
-.ch-btn:hover{background:rgba(255,255,255,.28)}
+.ch-btn:hover{background:rgba(255,255,255,.2)}
 
-/* ── Filter bar ── */
+/* ── Filter bar — scrollable chips ── */
 .fbar{
-  padding:8px 12px;border-bottom:1px solid #f0f2f5;
-  display:flex;gap:6px;overflow-x:auto;flex-shrink:0;
+  padding:6px 10px;border-bottom:1px solid #f0f2f5;
+  display:flex;gap:5px;overflow-x:auto;flex-shrink:0;
   scrollbar-width:none;
 }
 .fbar::-webkit-scrollbar{display:none}
 .ftag{
-  padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:600;
   cursor:pointer;white-space:nowrap;border:1.5px solid transparent;
-  background:#f0f2f5;color:#57606a;transition:all .12s;
+  background:#f0f2f5;color:#57606a;transition:all .1s;
 }
 .ftag.active{background:#e8f0fe;color:#1565c0;border-color:#1565c0}
 .ftag:hover{background:#e8f0fe;color:#1565c0}
 
 /* ── Messages ── */
 .msgs{
-  flex:1;overflow-y:auto;padding:14px;
-  display:flex;flex-direction:column;gap:10px;
+  flex:1;overflow-y:auto;padding:12px;
+  display:flex;flex-direction:column;gap:8px;
 }
-.msgs::-webkit-scrollbar{width:4px}
-.msgs::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+.msgs::-webkit-scrollbar{width:3px}
+.msgs::-webkit-scrollbar-thumb{background:#e0e0e0;border-radius:4px}
 
 /* ── Bubbles ── */
-.mrow{display:flex;gap:8px;align-items:flex-end}
+.mrow{display:flex;gap:7px;align-items:flex-end}
 .mrow.user{flex-direction:row-reverse}
 .mav{
-  width:28px;height:28px;border-radius:50%;
+  width:26px;height:26px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:13px;flex-shrink:0;
+  font-size:12px;flex-shrink:0;
 }
 .mrow.bot .mav{background:#e8f0fe}
 .mrow.user .mav{background:#1565c0}
 
 .bub{
-  max-width:84%;padding:9px 13px;border-radius:16px;
-  font-size:13.5px;line-height:1.55;word-break:break-word;
+  max-width:86%;padding:8px 12px;border-radius:16px;
+  font-size:13px;line-height:1.5;word-break:break-word;
 }
 .mrow.bot  .bub{background:#f0f2f5;color:#1f2328;border-bottom-left-radius:3px}
 .mrow.user .bub{background:#1565c0;color:#fff;border-bottom-right-radius:3px}
 
-.mt{font-size:10px;color:#9aa0a6;margin-top:3px;padding:0 3px}
+.mt{font-size:9.5px;color:#b0bec5;margin-top:2px;padding:0 2px}
 .mrow.user .mt{text-align:right}
 
 /* ── Typing ── */
@@ -221,37 +222,37 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
 
 /* ── Input area ── */
 .ia{
-  padding:10px 12px;border-top:1px solid #f0f2f5;
-  display:flex;gap:7px;align-items:flex-end;background:#fff;flex-shrink:0;
+  padding:8px 10px;border-top:1px solid #f0f2f5;
+  display:flex;gap:6px;align-items:flex-end;background:#fff;flex-shrink:0;
 }
 .cinput{
-  flex:1;border:1.5px solid #dadce0;border-radius:22px;
-  padding:8px 15px;font-size:13.5px;outline:none;resize:none;
-  max-height:90px;overflow-y:auto;font-family:inherit;
-  transition:border-color .15s;line-height:1.5;
+  flex:1;border:1.5px solid #e8eaed;border-radius:20px;
+  padding:7px 13px;font-size:13px;outline:none;resize:none;
+  max-height:80px;overflow-y:auto;font-family:inherit;
+  transition:border-color .13s;line-height:1.5;background:#f8f9fa;
 }
-.cinput:focus{border-color:#1565c0}
-.cinput::placeholder{color:#bdc1c6}
-.cinput:disabled{background:#f8f9fa}
+.cinput:focus{border-color:#1565c0;background:#fff}
+.cinput::placeholder{color:#c0c6cc}
+.cinput:disabled{background:#f0f2f5}
 
 .bsend{
-  width:40px;height:40px;border-radius:50%;background:#1565c0;
+  width:36px;height:36px;border-radius:50%;background:#1565c0;
   border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:17px;color:#fff;flex-shrink:0;transition:background .15s,transform .1s;
+  font-size:15px;color:#fff;flex-shrink:0;transition:background .13s,transform .1s;
 }
-.bsend:hover{background:#0d47a1;transform:scale(1.06)}
+.bsend:hover{background:#0d47a1;transform:scale(1.05)}
 .bsend:disabled{background:#dadce0;cursor:not-allowed;transform:none}
 
 /* ── Mic button ── */
 .bmic{
-  width:40px;height:40px;border-radius:50%;
-  background:#fff;border:1.5px solid #dadce0;
+  width:36px;height:36px;border-radius:50%;
+  background:#f8f9fa;border:1.5px solid #e8eaed;
   cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:18px;flex-shrink:0;
-  transition:background .15s,border-color .15s,transform .1s;
+  font-size:16px;flex-shrink:0;
+  transition:background .13s,border-color .13s,transform .1s;
   position:relative;
 }
-.bmic:hover{background:#fce4ec;border-color:#e53935;transform:scale(1.06)}
+.bmic:hover{background:#fce4ec;border-color:#e53935;transform:scale(1.05)}
 .bmic.listening{
   background:#e53935;border-color:#e53935;
   animation:mic-pulse 1.2s ease-in-out infinite;
@@ -336,18 +337,19 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
 }
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:#e8eaed}
 
-/* ── Tab bar ── */
+/* ── Tab bar — icon + tiny label ── */
 .tabbar{
-  display:flex;border-bottom:1px solid #e8eaed;flex-shrink:0;background:#fff;
+  display:flex;border-bottom:1px solid #eef0f3;flex-shrink:0;background:#fafbfc;
 }
 .tab{
-  flex:1;padding:9px 4px;font-size:12px;font-weight:600;
-  border:none;background:none;cursor:pointer;color:#5f6368;
-  border-bottom:2.5px solid transparent;transition:color .12s,border-color .12s;
-  display:flex;align-items:center;justify-content:center;gap:4px;
+  flex:1;padding:7px 2px 6px;font-size:10px;font-weight:600;
+  border:none;background:none;cursor:pointer;color:#9aa0a6;
+  border-bottom:2px solid transparent;transition:color .1s,border-color .1s;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
 }
+.tab .ti{font-size:15px;line-height:1}
 .tab.active{color:#1565c0;border-bottom-color:#1565c0}
-.tab:hover{color:#1565c0;background:#f8fbff}
+.tab:hover{color:#1565c0;background:#f0f4ff}
 
 /* ── Translate panel ── */
 .trpanel{
@@ -678,7 +680,7 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
 [data-dark='1'] .hw-btn.sec{background:#232336;border-color:#444;color:#aaa}
 
 /* ── Responsive / Mobile ── */
-@media(max-width:600px){
+@media(max-width:430px){
   .cw{
     width:100vw;right:0;bottom:0;
     height:100dvh;height:calc(100dvh - 0px);
@@ -686,28 +688,38 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
     transform-origin:bottom center;
   }
   .cw.off{transform:scale(.96) translateY(16px)}
-  #fab{bottom:16px;right:16px;width:52px;height:52px;font-size:22px}
-  .ch{padding:10px 12px}
-  .ch-av{width:34px;height:34px;font-size:16px}
-  .ch-info h3{font-size:13px}
-  .ch-btn{width:32px;height:32px;font-size:13px}
-  .fbar{padding:6px 10px;gap:5px}
-  .ftag{padding:5px 10px;font-size:12px}
-  .msgs{padding:10px}
+  #fab{bottom:14px;right:14px;width:50px;height:50px;font-size:21px}
+  .ch{padding:9px 11px}
+  .ch-av{width:32px;height:32px;font-size:15px}
+  .ch-info h3{font-size:12.5px}
+  .ch-btn{width:30px;height:30px;font-size:12px}
+  .fbar{padding:5px 8px;gap:4px}
+  .ftag{padding:4px 9px;font-size:11px}
+  .msgs{padding:9px}
   .bub{font-size:13px}
-  .cinput{font-size:14px;padding:10px 14px}
-  .bsend,.bmic{width:44px;height:44px;font-size:20px}
-  .abtn{padding:7px 13px;font-size:12px}
-  .fcard{padding:10px 12px}
-  .fname{font-size:13px}
-  .fic{font-size:24px}
-  .sbadge{font-size:10px;padding:3px 7px}
-  .tab{padding:10px 4px;font-size:12.5px}
+  .cinput{font-size:14px;padding:9px 13px}
+  .bsend,.bmic{width:42px;height:42px;font-size:19px}
+  .abtn{padding:6px 11px;font-size:11.5px}
+  .fcard{padding:9px 11px}
+  .fname{font-size:12.5px}
+  .fic{font-size:22px}
+  .sbadge{font-size:10px;padding:2px 6px}
+  .tab{padding:8px 2px 5px;font-size:10px}
+  .tab .ti{font-size:15px}
   .tr-textarea{font-size:14px}
-  .toast{bottom:80px;font-size:13px}
+  .toast{bottom:76px;font-size:13px}
+}
+@media(min-width:431px) and (max-width:600px){
+  .cw{
+    width:100vw;right:0;bottom:0;
+    height:100dvh;height:calc(100dvh - 0px);
+    border-radius:0;
+  }
+  .bsend,.bmic{width:40px;height:40px}
+  .tab{padding:8px 3px 5px}
 }
 @media(min-width:601px) and (max-width:768px){
-  .cw{width:calc(100vw - 24px);right:12px;bottom:84px;height:calc(100vh - 110px)}
+  .cw{width:calc(100vw - 20px);right:10px;bottom:80px;height:calc(100vh - 106px)}
 }
 /* ── Desktop-only actions: hide on touch ── */
 .desktop-only{ display:flex; }
@@ -2012,6 +2024,7 @@ function App() {
   const [browseDir,  setBrowseDir]  = useState(null);     // current browse path
   const [browseTree, setBrowseTree] = useState(null);
   const [showAIModal,setShowAIModal]= useState(false);    // AI settings modal
+  const [showVoiceBar,setShowVoiceBar]= useState(false);  // voice lang row toggle
 
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
@@ -2578,16 +2591,16 @@ function App() {
       {/* Tab bar */}
       <div className="tabbar">
         <button className={`tab${activeTab==='chat'?' active':''}`} onClick={()=>setActiveTab('chat')}>
-          💬 Chat
+          <span className="ti">💬</span>Chat
         </button>
         <button className={`tab${activeTab==='translate'?' active':''}`} onClick={()=>setActiveTab('translate')}>
-          🌐 Dịch
+          <span className="ti">🌐</span>Dịch
         </button>
         <button className={`tab${activeTab==='browse'?' active':''}`} onClick={()=>{ setActiveTab('browse'); if(!browseTree) browseDir2(''); }}>
-          📁 Duyệt
+          <span className="ti">📁</span>Duyệt
         </button>
         <button className={`tab${activeTab==='hardware'?' active':''}`} onClick={()=>setActiveTab('hardware')}>
-          📱 HW
+          <span className="ti">📱</span>HW
         </button>
       </div>
 
@@ -2700,10 +2713,34 @@ function App() {
           </button>
         </div>
 
-        {/* Voice lang row */}
-        {voice.supported && (
-          <div style={{padding:'3px 12px 7px',display:'flex',alignItems:'center',gap:5,flexShrink:0,borderTop:'1px solid #f5f5f5'}}>
-            <span style={{fontSize:10,color:'#9aa0a6',fontWeight:600,flexShrink:0}}>🎤</span>
+        {/* Voice lang + clear — collapsed by default, toggle with small button */}
+        <div style={{padding:'3px 10px 4px',borderTop:'1px solid #f5f5f5',display:'flex',alignItems:'center',gap:5,flexShrink:0}}>
+          <button
+            style={{fontSize:10,color:'#9aa0a6',background:'none',border:'none',cursor:'pointer',padding:'1px 4px',borderRadius:5,display:'flex',alignItems:'center',gap:3}}
+            onClick={()=>setShowVoiceBar(v=>!v)}
+            title="Tuỳ chọn giọng nói & lịch sử">
+            🎤 {showVoiceBar?'▲':'▼'}
+          </button>
+          {!voice.supported && (
+            <span style={{fontSize:10,color:'#bdc1c6'}}>Chrome/Edge để dùng voice</span>
+          )}
+          {/* Always-visible clear button */}
+          <button style={{
+            marginLeft:'auto',fontSize:10,color:'#c0c6cc',background:'none',border:'none',
+            cursor:'pointer',padding:'1px 5px',borderRadius:5,
+          }}
+            onClick={()=>{
+              try{localStorage.removeItem('chatHistory');}catch{}
+              setMsgs([{type:'welcome',time:FMT_TIME(),
+                suggestions:['🔍 Tìm file xã Thanh Phú','📄 Tìm hợp đồng','📊 Thống kê']}]);
+            }}
+            title="Xoá lịch sử chat">
+            🗑
+          </button>
+        </div>
+        {/* Expanded: voice lang selector */}
+        {showVoiceBar && voice.supported && (
+          <div style={{padding:'3px 10px 6px',display:'flex',alignItems:'center',gap:4,flexShrink:0,flexWrap:'wrap'}}>
             {[{c:'vi',f:'🇻🇳',n:'VI'},{c:'en',f:'🇬🇧',n:'EN'},{c:'zh',f:'🇨🇳',n:'ZH'},{c:'ja',f:'🇯🇵',n:'JA'},{c:'ko',f:'🇰🇷',n:'KO'},{c:'fr',f:'🇫🇷',n:'FR'}].map(l=>(
               <button key={l.c}
                 onClick={()=>setVoiceLang(l.c)}
@@ -2720,25 +2757,6 @@ function App() {
             ))}
           </div>
         )}
-        {!voice.supported && (
-          <div style={{padding:'2px 14px 6px',fontSize:11,color:'#bdc1c6',flexShrink:0}}>
-            ℹ️ Dùng Chrome/Edge để bật nhập liệu bằng giọng nói.
-          </div>
-        )}
-        {/* Clear history button */}
-        <div style={{padding:'4px 12px 6px',borderTop:'1px solid #f5f5f5',display:'flex',gap:6,flexShrink:0}}>
-          <button style={{
-            fontSize:10.5,color:'#9aa0a6',background:'none',border:'none',
-            cursor:'pointer',padding:'2px 6px',borderRadius:6,
-          }}
-            onClick={()=>{
-              try{localStorage.removeItem('chatHistory');}catch{}
-              setMsgs([{type:'welcome',time:FMT_TIME(),
-                suggestions:['🔍 Tìm file xã Thanh Phú','📄 Tìm hợp đồng','📊 Thống kê']}]);
-            }}>
-            🗑 Xoá lịch sử
-          </button>
-        </div>
       </>)}
 
       {/* Translate tab */}
