@@ -515,6 +515,39 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
 [data-dark='1'] .sbadge{background:#162a50;color:#82b1ff}
 [data-dark='1'] .voice-bar{background:#3a1010;border-color:#5a2020;color:#ff8a80}
 
+/* ── Bob Chat Panel ── */
+.bobpanel{
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;background:#fff;
+}
+.bob-msgs{
+  flex:1;overflow-y:auto;padding:12px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.bob-msgs::-webkit-scrollbar{width:3px}
+.bob-msgs::-webkit-scrollbar-thumb{background:#e0e0e0;border-radius:4px}
+.bob-setup{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px 16px;gap:12px;text-align:center;
+}
+.bob-setup .bob-logo{font-size:44px;margin-bottom:4px}
+.bob-setup h4{font-size:14px;font-weight:700;color:#1565c0}
+.bob-setup p{font-size:12px;color:#5f6368;line-height:1.6;max-width:280px}
+.bob-ia{
+  padding:8px 10px;border-top:1px solid #f0f2f5;
+  display:flex;gap:6px;align-items:flex-end;background:#fff;flex-shrink:0;
+}
+.bob-model-bar{
+  padding:4px 12px;background:#e8f0fe;border-bottom:1px solid #c5d8fb;
+  font-size:10.5px;color:#1565c0;display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.bob-model-bar strong{font-weight:700}
+[data-dark='1'] .bobpanel{background:#1c1c2e}
+[data-dark='1'] .bob-msgs{background:#1c1c2e}
+[data-dark='1'] .bob-ia{background:#232336;border-color:#333}
+[data-dark='1'] .bob-model-bar{background:#162a50;border-color:#1565c0;color:#82b1ff}
+[data-dark='1'] .bob-setup h4{color:#82b1ff}
+[data-dark='1'] .bob-setup p{color:#888}
+
 /* ── AI Settings Modal ── */
 .ai-overlay{
   position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10001;
@@ -2059,6 +2092,153 @@ function HardwarePanel({ onSendToChat }) {
   );
 }
 
+// ── BobChatPanel — standalone IBM Bob AI chat ─────────────────────────────────
+function BobChatPanel({ aiCfg, onOpenSettings }) {
+  const [msgs,   setMsgs]   = useState([{
+    role:'assistant',
+    text:'Xin chào! Tôi là **IBM Bob AI**. Tôi có thể trả lời câu hỏi, giải thích tài liệu, viết nội dung và hỗ trợ công việc của bạn. Hỏi gì đó đi! 🔵',
+    time: FMT_TIME(),
+  }]);
+  const [input,  setInput]  = useState('');
+  const [busy,   setBusy]   = useState(false);
+  const [localHist, setLocalHist] = useState([]);
+  const bottomRef = useRef(null);
+  const inputRef  = useRef(null);
+
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs]);
+
+  const provDef  = AI_PROVIDERS.find(p=>p.id===(aiCfg.provider||'bob')) || AI_PROVIDERS[0];
+  const modelName = aiCfg.model || (aiCfg.provider==='bob'
+    ? 'ibm/granite-3-3-8b-instruct'
+    : provDef.models[0] || aiCfg.provider);
+
+  const send = useCallback(async (override) => {
+    const text = (override || input).trim();
+    if (!text || busy) return;
+    setInput('');
+    setBusy(true);
+    const userMsg = { role:'user', text, time: FMT_TIME() };
+    setMsgs(m => [...m, userMsg, { role:'typing', time: FMT_TIME() }]);
+
+    try {
+      const body = {
+        message: text,
+        history: localHist,
+        fileContext: '',
+        provider: aiCfg.provider || 'bob',
+        model:    aiCfg.model || undefined,
+        apiKey:   aiCfg.apiKey,
+        baseUrl:  aiCfg.baseUrl || undefined,
+      };
+      const r = await fetch('/api/ai', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      setLocalHist(h => [...h.slice(-18),
+        { role:'user', content: text },
+        { role:'assistant', content: d.reply },
+      ]);
+      setMsgs(m => [...m.slice(0,-1), { role:'assistant', text: d.reply, time: FMT_TIME() }]);
+    } catch(e) {
+      setMsgs(m => [...m.slice(0,-1), { role:'assistant', text:`❌ ${e.message}`, time: FMT_TIME(), err:true }]);
+    } finally {
+      setBusy(false);
+      setTimeout(()=>inputRef.current?.focus(), 80);
+    }
+  }, [input, busy, aiCfg, localHist]);
+
+  const onKey = e => { if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } };
+
+  const clearChat = () => {
+    setMsgs([{ role:'assistant', text:'Lịch sử đã xoá. Bắt đầu cuộc trò chuyện mới! 🔵', time: FMT_TIME() }]);
+    setLocalHist([]);
+  };
+
+  // Not configured yet
+  if (!aiCfg.enabled || !aiCfg.apiKey) {
+    return (
+      <div className="bobpanel">
+        <div className="bob-setup">
+          <div className="bob-logo">🔵</div>
+          <h4>IBM Bob AI</h4>
+          <p>Kết nối với IBM Bob (Granite · Llama) hoặc bất kỳ AI provider nào để bắt đầu chat thông minh.</p>
+          <button
+            style={{padding:'9px 22px',background:'#1565c0',color:'#fff',border:'none',
+              borderRadius:20,fontWeight:700,fontSize:12.5,cursor:'pointer'}}
+            onClick={onOpenSettings}>
+            ⚙️ Cài đặt AI
+          </button>
+          <p style={{fontSize:10.5,color:'#9aa0a6',marginTop:4}}>
+            Miễn phí: Groq · Gemini · IBM Bob (cần key)
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bobpanel">
+      {/* Model bar */}
+      <div className="bob-model-bar">
+        <span>{provDef.icon}</span>
+        <span><strong>{provDef.name}</strong> · {modelName.split('/').pop()}</span>
+        <button style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',
+          fontSize:10,color:'#5f6368',padding:'1px 5px',borderRadius:5}}
+          onClick={clearChat} title="Xoá lịch sử">🗑</button>
+        <button style={{background:'none',border:'none',cursor:'pointer',
+          fontSize:10,color:'#5f6368',padding:'1px 5px',borderRadius:5}}
+          onClick={onOpenSettings} title="Đổi cài đặt AI">⚙️</button>
+      </div>
+
+      {/* Messages */}
+      <div className="bob-msgs">
+        {msgs.map((m,i) => (
+          <div key={i} className={`mrow ${m.role==='user'?'user':'bot'}`}>
+            {m.role!=='user' && <div className="mav">{m.role==='typing'?'⏳':'🔵'}</div>}
+            <div style={{maxWidth:'86%'}}>
+              {m.role==='typing'
+                ? <div className="bub" style={{padding:'7px 12px',background:'#f0f2f5'}}>
+                    <div className="dots"><span/><span/><span/></div>
+                  </div>
+                : <div className={`bub${m.err?' ':' '}`}
+                    style={m.role==='user'
+                      ? {background:'#1565c0',color:'#fff',borderBottomRightRadius:3}
+                      : {background: m.err?'#ffebee':'#f0f2f5', color: m.err?'#c62828':'#1f2328', borderBottomLeftRadius:3}}
+                    dangerouslySetInnerHTML={{__html:
+                      (m.text||'')
+                        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                        .replace(/`([^`]+)`/g,'<code style="background:#e8eaed;padding:1px 4px;border-radius:4px;font-size:11.5px">$1</code>')
+                        .replace(/\n/g,'<br/>')}}/>
+              }
+              <div className="mt">{m.time}</div>
+            </div>
+            {m.role==='user' && <div className="mav" style={{background:'#1565c0',color:'#fff'}}>👤</div>}
+          </div>
+        ))}
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Input */}
+      <div className="bob-ia">
+        <textarea ref={inputRef} className="cinput" rows={1}
+          placeholder="Hỏi IBM Bob AI..."
+          value={input}
+          onChange={e=>setInput(e.target.value)}
+          onKeyDown={onKey}
+          disabled={busy}/>
+        <button className="bsend"
+          onClick={()=>send()}
+          disabled={!input.trim()||busy}
+          title="Gửi (Enter)">
+          ➤
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
   const [open,       setOpen]       = useState(false);
@@ -2070,7 +2250,7 @@ function App() {
   const [toast,      setToast]      = useState('');
   const [activeExt,  setActiveExt]  = useState('');
   const [unread,     setUnread]     = useState(0);
-  const [activeTab,  setActiveTab]  = useState('chat');   // 'chat' | 'translate' | 'browse'
+  const [activeTab,  setActiveTab]  = useState('chat');   // 'chat'|'bob'|'translate'|'browse'|'hardware'
   const [trInit,     setTrInit]     = useState({ text:'', src:'vi', tgt:'en' });
   const [voiceLang,  setVoiceLang]  = useState('vi');
   const [darkMode,   setDarkMode]   = useState(()=> localStorage.getItem('darkMode')==='1');
@@ -2648,6 +2828,10 @@ function App() {
         <button className={`tab${activeTab==='chat'?' active':''}`} onClick={()=>setActiveTab('chat')}>
           <span className="ti">💬</span>Chat
         </button>
+        <button className={`tab${activeTab==='bob'?' active':''}`} onClick={()=>setActiveTab('bob')}
+          style={activeTab==='bob'?{}:{}} title="IBM Bob AI Chat">
+          <span className="ti">🔵</span>Bob
+        </button>
         <button className={`tab${activeTab==='translate'?' active':''}`} onClick={()=>setActiveTab('translate')}>
           <span className="ti">🌐</span>Dịch
         </button>
@@ -2865,6 +3049,13 @@ function App() {
           initSrc={trInit.src}
           initTgt={trInit.tgt}
           onTranslateToChat={translateToChat}/>
+      )}
+
+      {/* Bob AI tab */}
+      {activeTab==='bob' && (
+        <BobChatPanel
+          aiCfg={aiCfg}
+          onOpenSettings={()=>setShowAIModal(true)}/>
       )}
 
       {/* Hardware tab */}
