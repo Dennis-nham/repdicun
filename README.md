@@ -1,4 +1,4 @@
-# 📂 Trợ Lý Tìm File — File Chat Assistant
+# 📂 Daddy Cool AI — File Chat Assistant
 
 Webapp React popup chat hỗ trợ tìm kiếm, đọc, dịch và quản lý tệp tin local thông minh.
 

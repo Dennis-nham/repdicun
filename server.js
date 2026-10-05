@@ -1,16 +1,19 @@
-const express = require('express');
-const cors    = require('cors');
-const fs      = require('fs');
-const path    = require('path');
+const express  = require('express');
+const cors     = require('cors');
+const fs       = require('fs');
+const path     = require('path');
+const https    = require('https');
+const http     = require('http');
 const { exec, execFile } = require('child_process');
-const mammoth = require('mammoth');
-const XLSX    = require('xlsx');
-const Fuse    = require('fuse.js');
+const mammoth  = require('mammoth');
+const XLSX     = require('xlsx');
+const Fuse     = require('fuse.js');
 
 const app  = express();
 const PORT = 3579;
 const ROOT_DIR = path.resolve(__dirname, '..');
 
+app.set('trust proxy', true);  // trust X-Forwarded-For from proxies
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -205,7 +208,13 @@ app.get('/api/search', (req, res) => {
 
 // ─── API: Status ──────────────────────────────────────────────────────────────
 app.get('/api/status', (req, res) => {
-  res.json({ ready: indexReady, indexing, fileCount: fileIndex.length, lastIndexed });
+  res.json({
+    ready: indexReady,
+    indexing,
+    fileCount: fileIndex.length,
+    lastIndexed,
+    isLocal: isLocalRequest(req),   // client-side can read this to adjust UI
+  });
 });
 
 // ─── API: Refresh index ───────────────────────────────────────────────────────
@@ -215,10 +224,24 @@ app.post('/api/refresh', (req, res) => {
   res.json({ message: 'Đã bắt đầu lập chỉ mục lại...' });
 });
 
+// ─── Helper: detect if request is from the local machine ─────────────────────
+function isLocalRequest(req) {
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+}
+
 // ─── API: Open file / folder ──────────────────────────────────────────────────
 app.post('/api/open', (req, res) => {
   let { filePath, openFolder } = req.body;
   if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
+
+  // Remote clients (LAN / mobile) cannot open files on the server's OS
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({
+      error: 'Chức năng mở file chỉ hoạt động khi truy cập từ chính máy chủ (localhost).\nTừ thiết bị khác hãy dùng nút ĐỌC để xem nội dung.',
+      remoteOnly: true,
+    });
+  }
 
   const resolved = path.resolve(filePath);
   if (!resolved.startsWith(path.resolve(ROOT_DIR))) {
@@ -316,6 +339,13 @@ app.post('/api/convert/word2pdf', (req, res) => {
   const { filePath } = req.body;
   if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
 
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({
+      error: 'Chuyển đổi file chỉ hỗ trợ khi truy cập từ chính máy chủ (localhost).',
+      remoteOnly: true,
+    });
+  }
+
   const resolved = path.resolve(filePath);
   if (!resolved.startsWith(path.resolve(ROOT_DIR))) {
     return res.status(403).json({ error: 'Access denied' });
@@ -347,6 +377,13 @@ Write-Output 'OK'
 app.post('/api/convert/pdf2word', (req, res) => {
   const { filePath } = req.body;
   if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
+
+  if (!isLocalRequest(req)) {
+    return res.status(403).json({
+      error: 'Chuyển đổi file chỉ hỗ trợ khi truy cập từ chính máy chủ (localhost).',
+      remoteOnly: true,
+    });
+  }
 
   const resolved = path.resolve(filePath);
   if (!resolved.startsWith(path.resolve(ROOT_DIR))) {
@@ -430,13 +467,129 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
+// ─── API: AI Chat (proxy — key stays on client, never stored) ────────────────
+// Supports OpenAI, Groq, Google Gemini, Mistral, any OpenAI-compatible endpoint.
+// The client sends: { message, history, fileContext, provider, model, apiKey, baseUrl }
+// The server acts as a proxy so API keys are not exposed in browser network logs
+// to other LAN users (the key travels only on the loopback / LAN encrypted path).
+app.post('/api/ai', async (req, res) => {
+  const { message, history = [], fileContext = '', provider = 'openai',
+          model, apiKey, baseUrl } = req.body;
+
+  if (!apiKey) return res.status(400).json({ error: 'Thiếu API key.' });
+  if (!message) return res.status(400).json({ error: 'Thiếu message.' });
+
+  // ── Build provider config ──────────────────────────────────────────────────
+  const PROVIDERS = {
+    openai:   { url: 'https://api.openai.com/v1/chat/completions',        defaultModel: 'gpt-4o-mini',         authHeader: `Bearer ${apiKey}` },
+    groq:     { url: 'https://api.groq.com/openai/v1/chat/completions',   defaultModel: 'llama-3.1-8b-instant', authHeader: `Bearer ${apiKey}` },
+    mistral:  { url: 'https://api.mistral.ai/v1/chat/completions',        defaultModel: 'mistral-small-latest', authHeader: `Bearer ${apiKey}` },
+    gemini:   { url: `https://generativelanguage.googleapis.com/v1beta/models/${model||'gemini-1.5-flash'}:generateContent?key=${apiKey}`, defaultModel: 'gemini-1.5-flash', authHeader: null },
+    custom:   { url: baseUrl || '', defaultModel: model || 'gpt-4o-mini', authHeader: `Bearer ${apiKey}` },
+  };
+
+  const cfg = PROVIDERS[provider] || PROVIDERS.openai;
+  const endpoint = new URL(cfg.url);
+  const chosenModel = model || cfg.defaultModel;
+
+  // ── System prompt: gives AI context about the file manager ────────────────
+  const systemPrompt = `Bạn là trợ lý AI thông minh tích hợp trong ứng dụng quản lý file nội bộ "Trợ Lý Tìm File".
+Nhiệm vụ chính: giúp người dùng tìm kiếm, quản lý và làm việc với kho tài liệu.
+Kho tài liệu gồm file PDF, Word, Excel, hình ảnh scan và video.
+Trả lời bằng tiếng Việt, ngắn gọn, thực dụng.
+Khi người dùng muốn tìm file, hãy trả về JSON action để app xử lý:
+{"action":"search","query":"<từ khóa>","ext":"<đuôi hoặc rỗng>"}
+Khi người dùng hỏi thông tin chung, trả lời bình thường.
+Context file hiện tại (nếu có): ${fileContext || 'không có'}`;
+
+  // ── Build messages array ───────────────────────────────────────────────────
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.slice(-10).map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: message },
+  ];
+
+  try {
+    let responseText = '';
+
+    if (provider === 'gemini') {
+      // ── Gemini REST format ─────────────────────────────────────────────────
+      const body = JSON.stringify({
+        contents: messages
+          .filter(m => m.role !== 'system')
+          .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      });
+      const data = await httpsPost(endpoint, body, {
+        'Content-Type': 'application/json',
+      });
+      responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else {
+      // ── OpenAI-compatible format ───────────────────────────────────────────
+      const body = JSON.stringify({
+        model: chosenModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+      });
+      const data = await httpsPost(endpoint, body, {
+        'Content-Type': 'application/json',
+        'Authorization': cfg.authHeader,
+      });
+      if (data.error) return res.status(400).json({ error: data.error.message || JSON.stringify(data.error) });
+      responseText = data?.choices?.[0]?.message?.content || '';
+    }
+
+    res.json({ reply: responseText, model: chosenModel });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Helper: HTTPS POST returning parsed JSON ─────────────────────────────────
+function httpsPost(url, body, headers) {
+  return new Promise((resolve, reject) => {
+    const isHttps = url.protocol === 'https:';
+    const lib = isHttps ? https : http;
+    const options = {
+      hostname: url.hostname,
+      port:     url.port || (isHttps ? 443 : 80),
+      path:     url.pathname + (url.search || ''),
+      method:   'POST',
+      headers:  { ...headers, 'Content-Length': Buffer.byteLength(body) },
+    };
+    const req = lib.request(options, res2 => {
+      let raw = '';
+      res2.on('data', c => raw += c);
+      res2.on('end', () => {
+        try { resolve(JSON.parse(raw)); }
+        catch { reject(new Error('Invalid JSON response: ' + raw.slice(0, 200))); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(30000, () => { req.destroy(); reject(new Error('AI request timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
+
 // ─── Fallback ─────────────────────────────────────────────────────────────────
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 File Chat App  →  http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+  const lanIPs = [];
+  for (const ifaces of Object.values(nets)) {
+    for (const iface of ifaces) {
+      if (iface.family === 'IPv4' && !iface.internal) lanIPs.push(iface.address);
+    }
+  }
+  console.log(`\n🚀 File Chat App  →  http://localhost:${PORT}  (máy chủ)`);
+  if (lanIPs.length) console.log(`🌐 Truy cập từ LAN  →  http://${lanIPs[0]}:${PORT}`);
   console.log(`📂 Root: ${ROOT_DIR}\n`);
   exec(`start http://localhost:${PORT}`, { shell: 'cmd.exe' });
 });

@@ -513,8 +513,148 @@ body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#e9ebe
 [data-dark='1'] .sbadge{background:#162a50;color:#82b1ff}
 [data-dark='1'] .voice-bar{background:#3a1010;border-color:#5a2020;color:#ff8a80}
 
-@media(max-width:500px){
-  .cw{width:calc(100vw - 16px);right:8px;bottom:80px;height:calc(100vh - 100px)}
+/* ── AI Settings Modal ── */
+.ai-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10001;
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  animation:fadeIn .15s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ai-modal{
+  background:#fff;border-radius:16px;width:100%;max-width:460px;
+  box-shadow:0 24px 64px rgba(0,0,0,.28);overflow:hidden;
+  animation:slideUp .18s ease;
+}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.ai-modal-hdr{
+  background:linear-gradient(135deg,#1565c0,#6a1b9a);
+  padding:16px 20px;display:flex;align-items:center;gap:10px;
+}
+.ai-modal-hdr h3{color:#fff;font-size:15px;font-weight:700;flex:1}
+.ai-modal-hdr p{color:rgba(255,255,255,.72);font-size:11px;margin-top:2px}
+.ai-modal-close{
+  background:rgba(255,255,255,.18);border:none;color:#fff;
+  width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:background .15s;
+}
+.ai-modal-close:hover{background:rgba(255,255,255,.32)}
+.ai-modal-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.ai-field{display:flex;flex-direction:column;gap:5px}
+.ai-label{font-size:11.5px;font-weight:700;color:#37474f;display:flex;align-items:center;gap:5px}
+.ai-label span{font-weight:400;color:#9aa0a6;font-size:10.5px}
+.ai-input{
+  padding:9px 12px;border:1.5px solid #dadce0;border-radius:10px;
+  font-size:13px;outline:none;font-family:inherit;transition:border-color .15s;
+  background:#fff;
+}
+.ai-input:focus{border-color:#1565c0}
+.ai-select{
+  padding:9px 12px;border:1.5px solid #dadce0;border-radius:10px;
+  font-size:13px;outline:none;font-family:inherit;background:#fff;
+  cursor:pointer;transition:border-color .15s;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239aa0a6' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;
+}
+.ai-select:focus{border-color:#1565c0}
+.ai-provider-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ai-pcard{
+  border:1.5px solid #e8eaed;border-radius:10px;padding:8px 6px;
+  text-align:center;cursor:pointer;transition:all .13s;background:#fff;
+}
+.ai-pcard:hover{border-color:#1565c0;background:#f0f4ff}
+.ai-pcard.active{border-color:#1565c0;background:#e8f0fe}
+.ai-pcard .pi{font-size:20px;display:block;margin-bottom:3px}
+.ai-pcard .pn{font-size:10.5px;font-weight:700;color:#37474f}
+.ai-pcard .ps{font-size:9.5px;color:#9aa0a6;margin-top:1px}
+.ai-pcard.active .pn{color:#1565c0}
+.ai-test{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-radius:10px;font-size:12px;
+}
+.ai-test.idle{background:#f0f2f5;color:#5f6368}
+.ai-test.ok  {background:#e8f5e9;color:#2e7d32}
+.ai-test.err {background:#ffebee;color:#c62828}
+.ai-test.busy{background:#fff8e1;color:#e65100}
+.ai-modal-ftr{
+  padding:12px 20px 16px;display:flex;gap:8px;border-top:1px solid #f0f2f5;
+}
+.ai-save{
+  flex:1;padding:10px;background:#1565c0;color:#fff;border:none;
+  border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+  transition:background .15s;
+}
+.ai-save:hover{background:#0d47a1}
+.ai-save:disabled{background:#dadce0;cursor:not-allowed}
+.ai-cancel{
+  padding:10px 18px;background:#fff;color:#5f6368;
+  border:1.5px solid #dadce0;border-radius:10px;font-size:13px;
+  font-weight:700;cursor:pointer;transition:all .13s;
+}
+.ai-cancel:hover{border-color:#c62828;color:#c62828}
+/* AI badge in header */
+.ai-badge{
+  font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;
+  display:flex;align-items:center;gap:3px;flex-shrink:0;cursor:pointer;
+  transition:background .13s;white-space:nowrap;
+}
+.ai-badge.on {background:rgba(76,175,80,.28);color:#a5d6a7}
+.ai-badge.off{background:rgba(255,255,255,.15);color:rgba(255,255,255,.65)}
+.ai-badge:hover{background:rgba(255,255,255,.28)!important;color:#fff!important}
+[data-dark='1'] .ai-modal{background:#1c1c2e;color:#e0e0e0}
+[data-dark='1'] .ai-input,[data-dark='1'] .ai-select{background:#272740;border-color:#444;color:#ddd}
+[data-dark='1'] .ai-pcard{background:#232336;border-color:#444}
+[data-dark='1'] .ai-pcard:hover{background:#2a2a46}
+[data-dark='1'] .ai-pcard.active{background:#162a50;border-color:#1565c0}
+[data-dark='1'] .ai-pcard .pn{color:#ccc}
+[data-dark='1'] .ai-modal-ftr{border-color:#333}
+[data-dark='1'] .ai-cancel{background:#232336;border-color:#444;color:#aaa}
+[data-dark='1'] .ai-test.idle{background:#272740;color:#888}
+[data-dark='1'] .ai-label{color:#bbb}
+
+/* ── Responsive / Mobile ── */
+@media(max-width:600px){
+  .cw{
+    width:100vw;right:0;bottom:0;
+    height:100dvh;height:calc(100dvh - 0px);
+    border-radius:0;
+    transform-origin:bottom center;
+  }
+  .cw.off{transform:scale(.96) translateY(16px)}
+  #fab{bottom:16px;right:16px;width:52px;height:52px;font-size:22px}
+  .ch{padding:10px 12px}
+  .ch-av{width:34px;height:34px;font-size:16px}
+  .ch-info h3{font-size:13px}
+  .ch-btn{width:32px;height:32px;font-size:13px}
+  .fbar{padding:6px 10px;gap:5px}
+  .ftag{padding:5px 10px;font-size:12px}
+  .msgs{padding:10px}
+  .bub{font-size:13px}
+  .cinput{font-size:14px;padding:10px 14px}
+  .bsend,.bmic{width:44px;height:44px;font-size:20px}
+  .abtn{padding:7px 13px;font-size:12px}
+  .fcard{padding:10px 12px}
+  .fname{font-size:13px}
+  .fic{font-size:24px}
+  .sbadge{font-size:10px;padding:3px 7px}
+  .tab{padding:10px 4px;font-size:12.5px}
+  .tr-textarea{font-size:14px}
+  .toast{bottom:80px;font-size:13px}
+}
+@media(min-width:601px) and (max-width:768px){
+  .cw{width:calc(100vw - 24px);right:12px;bottom:84px;height:calc(100vh - 110px)}
+}
+/* ── Desktop-only actions: hide on touch ── */
+.desktop-only{ display:flex; }
+@media(hover:none) and (pointer:coarse){
+  /* touch device — hide OS-level file actions */
+  .desktop-only{ display:none !important; }
+  .touch-note{ display:flex !important; }
+}
+.touch-note{
+  display:none;
+  font-size:11px;color:#9aa0a6;align-items:center;gap:5px;padding:4px 0;
 }
 </style>
 </head>
@@ -525,6 +665,26 @@ const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 const FMT_TIME = (d=new Date()) =>
   d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+
+// ── Device detection ─────────────────────────────────────────────────────────
+// isLocalHost: true khi truy cập từ cùng máy chủ chạy Node (localhost / 127.x)
+// isTouch    : true khi là thiết bị cảm ứng (mobile/tablet)
+// isDesktop  : true khi KHÔNG phải touch device
+const isLocalHost = () => {
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.');
+};
+const isTouch = () => window.matchMedia('(hover:none) and (pointer:coarse)').matches;
+// Quyền hạn: các hành động mở file / thư mục chỉ có nghĩa trên máy chạy server
+// Nếu truy cập từ mạng LAN / internet → vẫn hiện nút nhưng server sẽ mở file TẠI MÁY CHỦ
+// => ta chỉ ẩn trên thiết bị cảm ứng (không có file explorer), còn LAN desktop vẫn dùng được nếu muốn
+const DEVICE = {
+  isTouch:    isTouch(),
+  isLocal:    isLocalHost(),
+  // canOpenFile: cho phép các nút MỞ / CHỈNH SỬA / THƯ MỤC / CONVERT
+  // (ẩn trên mobile/tablet vì họ không có Windows Explorer)
+  canOpenFile: !isTouch(),
+};
 
 // ── Vietnamese normalization for smart search ────────────────────────────────
 function vi2plain(s='') {
@@ -582,7 +742,7 @@ function FileCard({ file, onSelect, selected }) {
 }
 
 // ── ActionBar ─────────────────────────────────────────────────────────────────
-function ActionBar({ file, onAction, loading }) {
+function ActionBar({ file, onAction, loading, serverIsLocal }) {
   const ext  = (file.ext||'').toLowerCase();
   const isPDF = ext==='.pdf';
   const isDoc = ['.docx','.doc'].includes(ext);
@@ -590,6 +750,10 @@ function ActionBar({ file, onAction, loading }) {
   const isXls = ['.xlsx','.xls','.csv'].includes(ext);
   const isTxt = ['.txt','.csv'].includes(ext);
   const canRead = isImg||isDoc||isXls||isTxt;
+  // canOpen: show file-open buttons only on non-touch devices
+  // On LAN desktop: show them (server will open on server machine, which is expected)
+  // On mobile/tablet: hide them (no file system access)
+  const canOpen = DEVICE.canOpenFile; // false on mobile/tablet
 
   return (
     <div className="abar">
@@ -598,18 +762,23 @@ function ActionBar({ file, onAction, loading }) {
           👁 ĐỌC
         </button>
       )}
-      <button className="abtn ab-open" onClick={()=>onAction('open',file)} disabled={!!loading}>
-        🚀 MỞ
-      </button>
-      <button className="abtn ab-edit" onClick={()=>onAction('edit',file)} disabled={!!loading}>
-        ✏️ CHỈNH SỬA
-      </button>
-      {isPDF && (
+      {/* Windows-only actions: hidden on touch devices */}
+      {canOpen && (
+        <button className="abtn ab-open" onClick={()=>onAction('open',file)} disabled={!!loading}>
+          🚀 MỞ
+        </button>
+      )}
+      {canOpen && (
+        <button className="abtn ab-edit" onClick={()=>onAction('edit',file)} disabled={!!loading}>
+          ✏️ CHỈNH SỬA
+        </button>
+      )}
+      {canOpen && isPDF && (
         <button className="abtn ab-cv" onClick={()=>onAction('pdf2word',file)} disabled={!!loading}>
           🔄 PDF→WORD
         </button>
       )}
-      {isDoc && (
+      {canOpen && isDoc && (
         <button className="abtn ab-cv" onClick={()=>onAction('word2pdf',file)} disabled={!!loading}>
           🔄 WORD→PDF
         </button>
@@ -620,18 +789,26 @@ function ActionBar({ file, onAction, loading }) {
       <button className="abtn ab-copy" onClick={()=>onAction('copypath',file)} disabled={!!loading}>
         📋 SAO CHÉP
       </button>
-      <button className="abtn ab-folder" onClick={()=>onAction('folder',file)} disabled={!!loading}>
-        📂 THƯ MỤC
-      </button>
+      {canOpen && (
+        <button className="abtn ab-folder" onClick={()=>onAction('folder',file)} disabled={!!loading}>
+          📂 THƯ MỤC
+        </button>
+      )}
       <button className="abtn ab-info" onClick={()=>onAction('info',file)} disabled={!!loading}>
         ℹ️ THÔNG TIN
       </button>
+      {/* Touch note: show only on mobile */}
+      {!canOpen && (
+        <div className="touch-note" style={{display:'flex'}}>
+          ℹ️ Mở file & chuyển đổi chỉ hỗ trợ trên máy tính
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Message renderer ──────────────────────────────────────────────────────────
-function Msg({ msg, onFileSelect, selFile, onSuggest }) {
+function Msg({ msg, onFileSelect, selFile, onSuggest, serverIsLocal }) {
   const [actLoading, setActLoading] = useState('');
 
   if (msg.type==='user') return (
@@ -710,7 +887,7 @@ function Msg({ msg, onFileSelect, selFile, onSuggest }) {
           <div className="bub" style={{maxWidth:'100%',background:'#f0f2f5'}}>
             <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>📄 {msg.file.name}</div>
             <div style={{fontSize:11.5,color:'#5f6368',marginBottom:6}}>Chọn thao tác:</div>
-            <ActionBar file={msg.file} onAction={handleAction} loading={actLoading}/>
+            <ActionBar file={msg.file} onAction={handleAction} loading={actLoading} serverIsLocal={serverIsLocal}/>
             {actLoading && (
               <div style={{marginTop:8}}>
                 {['pdf2word','word2pdf'].includes(actLoading)?(
@@ -1154,6 +1331,229 @@ function parseTranslateCmd(text) {
   return null;
 }
 
+// ── AI Provider definitions ──────────────────────────────────────────────────
+const AI_PROVIDERS = [
+  { id:'openai',  name:'OpenAI',       icon:'🤖', sub:'GPT-4o / o1',         models:['gpt-4o-mini','gpt-4o','gpt-3.5-turbo','o1-mini'] },
+  { id:'groq',    name:'Groq',         icon:'⚡', sub:'Llama 3 — Miễn phí',  models:['llama-3.1-8b-instant','llama-3.3-70b-versatile','mixtral-8x7b-32768'] },
+  { id:'gemini',  name:'Gemini',       icon:'✨', sub:'Google AI — Miễn phí', models:['gemini-1.5-flash','gemini-1.5-pro','gemini-2.0-flash'] },
+  { id:'mistral', name:'Mistral',      icon:'🌊', sub:'EU — Tiết kiệm',       models:['mistral-small-latest','mistral-medium-latest','open-mixtral-8x7b'] },
+  { id:'custom',  name:'Custom URL',   icon:'🔧', sub:'OpenAI-compatible',   models:[] },
+];
+
+// ── useAI hook — manages AI config stored in localStorage ────────────────────
+function useAI() {
+  const load = () => {
+    try {
+      const s = localStorage.getItem('aiConfig');
+      return s ? JSON.parse(s) : { provider:'groq', model:'', apiKey:'', baseUrl:'', enabled:false };
+    } catch { return { provider:'groq', model:'', apiKey:'', baseUrl:'', enabled:false }; }
+  };
+
+  const [cfg, setCfgRaw] = useState(load);
+
+  const setCfg = useCallback(next => {
+    setCfgRaw(next);
+    try { localStorage.setItem('aiConfig', JSON.stringify(next)); } catch {}
+  }, []);
+
+  // aiHistory for multi-turn context (role/content pairs sent to AI)
+  const [aiHistory, setAiHistory] = useState([]);
+
+  const callAI = useCallback(async (message, fileContext = '') => {
+    if (!cfg.enabled || !cfg.apiKey) return null;
+    const body = {
+      message,
+      history: aiHistory,
+      fileContext,
+      provider: cfg.provider,
+      model:    cfg.model || undefined,
+      apiKey:   cfg.apiKey,
+      baseUrl:  cfg.baseUrl || undefined,
+    };
+    const r = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    // append to history
+    setAiHistory(h => [
+      ...h.slice(-18),
+      { role:'user',      content: message },
+      { role:'assistant', content: d.reply },
+    ]);
+    return d.reply;
+  }, [cfg, aiHistory]);
+
+  const resetHistory = useCallback(() => setAiHistory([]), []);
+
+  return { cfg, setCfg, callAI, resetHistory, aiHistory };
+}
+
+// ── AISettingsModal ───────────────────────────────────────────────────────────
+function AISettingsModal({ onClose, aiCfg, onSave }) {
+  const [provider, setProvider] = useState(aiCfg.provider || 'groq');
+  const [apiKey,   setApiKey]   = useState(aiCfg.apiKey   || '');
+  const [model,    setModel]    = useState(aiCfg.model     || '');
+  const [baseUrl,  setBaseUrl]  = useState(aiCfg.baseUrl   || '');
+  const [showKey,  setShowKey]  = useState(false);
+  const [testSt,   setTestSt]   = useState('idle'); // idle|busy|ok|err
+  const [testMsg,  setTestMsg]  = useState('');
+
+  const provDef = AI_PROVIDERS.find(p=>p.id===provider) || AI_PROVIDERS[0];
+  const modelList = provDef.models;
+
+  const testConnection = async () => {
+    if (!apiKey.trim()) { setTestSt('err'); setTestMsg('Vui lòng nhập API key trước.'); return; }
+    setTestSt('busy'); setTestMsg('Đang kiểm tra kết nối...');
+    try {
+      const r = await fetch('/api/ai', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          message: 'Trả lời đúng 1 từ: OK',
+          history: [], fileContext: '',
+          provider, model: model||undefined, apiKey, baseUrl: baseUrl||undefined,
+        }),
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      setTestSt('ok');
+      setTestMsg(`✅ Kết nối thành công! Model: ${d.model}`);
+    } catch(e) {
+      setTestSt('err');
+      setTestMsg(`❌ ${e.message}`);
+    }
+  };
+
+  const save = () => {
+    onSave({ provider, apiKey: apiKey.trim(), model, baseUrl, enabled: !!apiKey.trim() });
+    onClose();
+  };
+
+  return (
+    <div className="ai-overlay" onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div className="ai-modal">
+        {/* Header */}
+        <div className="ai-modal-hdr">
+          <div>
+            <h3>🤖 Cấu hình AI</h3>
+            <p>Kết nối mô hình ngôn ngữ để chat thông minh hơn</p>
+          </div>
+          <button className="ai-modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="ai-modal-body">
+          {/* Provider grid */}
+          <div className="ai-field">
+            <div className="ai-label">Nhà cung cấp <span>— Chọn nơi lấy AI</span></div>
+            <div className="ai-provider-grid">
+              {AI_PROVIDERS.map(p=>(
+                <div key={p.id}
+                  className={`ai-pcard${provider===p.id?' active':''}`}
+                  onClick={()=>{ setProvider(p.id); setModel(''); setTestSt('idle'); setTestMsg(''); }}>
+                  <span className="pi">{p.icon}</span>
+                  <div className="pn">{p.name}</div>
+                  <div className="ps">{p.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* API Key */}
+          <div className="ai-field">
+            <div className="ai-label">
+              API Key
+              <span>— Lưu trong trình duyệt, không gửi lên internet</span>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              <input
+                className="ai-input" style={{flex:1}}
+                type={showKey?'text':'password'}
+                placeholder={`Dán ${provDef.name} API key vào đây...`}
+                value={apiKey}
+                onChange={e=>{ setApiKey(e.target.value); setTestSt('idle'); setTestMsg(''); }}/>
+              <button onClick={()=>setShowKey(s=>!s)}
+                style={{padding:'0 12px',border:'1.5px solid #dadce0',borderRadius:10,background:'#fff',cursor:'pointer',fontSize:16,color:'#5f6368'}}>
+                {showKey?'🙈':'👁'}
+              </button>
+            </div>
+            {/* Quick link to get key */}
+            {provider==='groq' && (
+              <div style={{fontSize:10.5,color:'#1565c0',marginTop:2}}>
+                🆓 Groq miễn phí — lấy key tại <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{color:'#1565c0'}}>console.groq.com/keys</a>
+              </div>
+            )}
+            {provider==='gemini' && (
+              <div style={{fontSize:10.5,color:'#1565c0',marginTop:2}}>
+                🆓 Gemini miễn phí — lấy key tại <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{color:'#1565c0'}}>aistudio.google.com</a>
+              </div>
+            )}
+            {provider==='openai' && (
+              <div style={{fontSize:10.5,color:'#9aa0a6',marginTop:2}}>
+                🔑 Lấy key tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" style={{color:'#1565c0'}}>platform.openai.com/api-keys</a>
+              </div>
+            )}
+          </div>
+
+          {/* Model selector */}
+          <div className="ai-field">
+            <div className="ai-label">Model <span>— để trống = dùng mặc định</span></div>
+            {modelList.length > 0 ? (
+              <select className="ai-select" value={model} onChange={e=>setModel(e.target.value)}>
+                <option value="">— Mặc định ({provDef.models[0]}) —</option>
+                {modelList.map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+            ) : (
+              <input className="ai-input" placeholder="Tên model (VD: gpt-4o-mini)" value={model} onChange={e=>setModel(e.target.value)}/>
+            )}
+          </div>
+
+          {/* Custom URL (chỉ hiện khi provider = custom) */}
+          {provider==='custom' && (
+            <div className="ai-field">
+              <div className="ai-label">Base URL <span>— OpenAI-compatible endpoint</span></div>
+              <input className="ai-input" placeholder="https://your-server/v1/chat/completions"
+                value={baseUrl} onChange={e=>setBaseUrl(e.target.value)}/>
+            </div>
+          )}
+
+          {/* Test button + status */}
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <button
+              style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #1565c0',
+                background: testSt==='busy'?'#e8f0fe':'#fff',color:'#1565c0',
+                fontWeight:700,fontSize:12,cursor:testSt==='busy'?'wait':'pointer'}}
+              onClick={testConnection}
+              disabled={testSt==='busy'}>
+              {testSt==='busy' ? '⏳ Đang kiểm tra...' : '🔌 Kiểm tra kết nối'}
+            </button>
+            {testMsg && (
+              <div className={`ai-test ${testSt}`}>{testMsg}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="ai-modal-ftr">
+          <button className="ai-cancel" onClick={onClose}>Huỷ</button>
+          <button className="ai-save" onClick={save} disabled={!apiKey.trim()}>
+            💾 Lưu cấu hình
+          </button>
+          {aiCfg.enabled && (
+            <button
+              style={{padding:'10px 14px',borderRadius:10,border:'1.5px solid #c62828',
+                background:'#fff',color:'#c62828',fontWeight:700,fontSize:12,cursor:'pointer'}}
+              onClick={()=>{ onSave({...aiCfg, apiKey:'', enabled:false}); onClose(); }}>
+              🗑 Xoá key
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
   const [open,       setOpen]       = useState(false);
@@ -1173,11 +1573,15 @@ function App() {
   const [advFilters, setAdvFilters] = useState({ dateFrom:'', dateTo:'', sizeMin:'', sizeMax:'', dir:'' });
   const [browseDir,  setBrowseDir]  = useState(null);     // current browse path
   const [browseTree, setBrowseTree] = useState(null);
+  const [showAIModal,setShowAIModal]= useState(false);    // AI settings modal
 
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
   const toastT      = useRef(null);
   const sendMsgRef  = useRef(null); // stable ref for voice auto-send
+
+  // ── AI hook ──
+  const { cfg: aiCfg, setCfg: setAiCfg, callAI, resetHistory: resetAIHistory } = useAI();
 
   // ── voice input (chat) ──
   const voice = useVoiceInput(LANG_SPEECH[voiceLang] || 'vi-VN');
@@ -1543,7 +1947,53 @@ function App() {
       return;
     }
 
-    // ── Conversation ──
+    // ── Try AI first if configured ────────────────────────────────────────────
+    if (aiCfg.enabled && aiCfg.apiKey) {
+      push({ type:'typing' });
+      try {
+        const aiReply = await callAI(text);
+        if (aiReply) {
+          // Check if AI returned a search action JSON
+          const actionMatch = aiReply.match(/\{[^}]*"action"\s*:\s*"search"[^}]*\}/);
+          if (actionMatch) {
+            try {
+              const act = JSON.parse(actionMatch[0]);
+              if (act.action === 'search' && act.query) {
+                // Execute search on behalf of AI
+                let url = `/api/search?q=${encodeURIComponent(act.query)}&limit=20`;
+                if (act.ext) url += `&ext=${encodeURIComponent(act.ext)}`;
+                if (activeExt) url += `&ext=${encodeURIComponent(activeExt)}`;
+                const r2 = await fetch(url);
+                const d2 = await r2.json();
+                const n2 = d2.results?.length||0;
+                // Replace typing bubble with AI message + results
+                replaceLast({
+                  type:'bot',
+                  text: `🤖 AI tìm theo: **"${act.query}"** ${act.ext?`(${act.ext})`:''}`,
+                });
+                push({
+                  type:    'results',
+                  text:    n2>0 ? `Tìm thấy <strong>${n2}</strong> kết quả:` : null,
+                  results: d2.results||[],
+                });
+                if (n2===0) push({type:'bot', text:`Không tìm thấy kết quả nào cho **"${act.query}"**.`, suggestions:['Thử từ khóa khác','Bỏ bộ lọc']});
+                setBusy(false);
+                return;
+              }
+            } catch {}
+          }
+          // Normal AI text reply
+          replaceLast({ type:'bot', text: aiReply });
+          setBusy(false);
+          return;
+        }
+      } catch(e) {
+        replaceLast({ type:'bot', text:`⚠️ AI lỗi: ${e.message}\nĐang dùng chế độ thường...` });
+        // fall through to keyword handling below
+      }
+    }
+
+    // ── Conversation (fallback — no AI or AI failed) ───────────────────────────
     let reply='', suggs=null;
 
     if (/xin\s*chào|hello|hi\b/i.test(lower)) {
@@ -1607,7 +2057,7 @@ function App() {
 
     push({ type:'bot', text:reply, suggestions:suggs });
     setBusy(false);
-  }, [input, busy, push, replaceLast, status, activeExt, advFilters, handleAction]);
+  }, [input, busy, push, replaceLast, status, activeExt, advFilters, handleAction, aiCfg, callAI]);
 
   // ── keep sendMsgRef current so voice auto-send never gets stale closure ──
   useEffect(() => { sendMsgRef.current = sendMsg; });
@@ -1632,6 +2082,14 @@ function App() {
       <span className={`badge${unread>0?' show':''}`}>{unread>9?'9+':unread}</span>
     </button>
 
+    {/* AI Settings Modal */}
+    {showAIModal && (
+      <AISettingsModal
+        aiCfg={aiCfg}
+        onSave={cfg => { setAiCfg(cfg); resetAIHistory(); }}
+        onClose={()=>setShowAIModal(false)}/>
+    )}
+
     {/* Chat window */}
     <div className={`cw ${open?'on':'off'}`}>
 
@@ -1649,6 +2107,28 @@ function App() {
           </p>
         </div>
         <div className="ch-actions">
+          {/* AI badge — click to open settings */}
+          <button
+            className={`ai-badge ${aiCfg.enabled?'on':'off'}`}
+            onClick={()=>setShowAIModal(true)}
+            title={aiCfg.enabled
+              ? `AI: ${AI_PROVIDERS.find(p=>p.id===aiCfg.provider)?.name||aiCfg.provider} — bấm để đổi`
+              : 'Bấm để cài AI'}>
+            {aiCfg.enabled
+              ? `${AI_PROVIDERS.find(p=>p.id===aiCfg.provider)?.icon||'🤖'} AI`
+              : '🤖'}
+          </button>
+          {/* Device badge */}
+          {DEVICE.isTouch && (
+            <span style={{fontSize:10,background:'rgba(255,255,255,.2)',borderRadius:10,padding:'2px 7px',color:'#fff',flexShrink:0,whiteSpace:'nowrap'}}>
+              📱
+            </span>
+          )}
+          {!DEVICE.isLocal && !DEVICE.isTouch && (
+            <span style={{fontSize:10,background:'rgba(255,255,255,.2)',borderRadius:10,padding:'2px 7px',color:'#fff',flexShrink:0,whiteSpace:'nowrap'}}>
+              🌐 LAN
+            </span>
+          )}
           <button className="ch-btn" title={darkMode?'Sáng':'Tối'} onClick={()=>setDarkMode(d=>!d)}>{darkMode?'☀️':'🌙'}</button>
           <button className="ch-btn" title="Duyệt thư mục" onClick={()=>{ setActiveTab('browse'); browseDir2(''); }}>📁</button>
           <button className="ch-btn" title="Công cụ dịch" onClick={()=>setActiveTab(t=>t==='translate'?'chat':'translate')}>🌐</button>
@@ -1727,7 +2207,8 @@ function App() {
             <Msg key={i} msg={m}
               onFileSelect={onFileSelect}
               selFile={selFile}
-              onSuggest={sendMsg}/>
+              onSuggest={sendMsg}
+              serverIsLocal={status.isLocal}/>
           ))}
           <div ref={bottomRef}/>
         </div>
