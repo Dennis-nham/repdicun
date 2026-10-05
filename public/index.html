@@ -1296,24 +1296,50 @@ function TranslatePanel({ onTranslateToChat, initText = '', initSrc = 'vi', init
   );
 }
 
+// ── Secure context check ──────────────────────────────────────────────────────
+// Web Speech API requires a secure context (HTTPS or localhost).
+// On LAN (192.168.x / 10.x) over plain HTTP it will always be blocked.
+const IS_SECURE = window.isSecureContext;
+const MIC_FIX_HINT = (() => {
+  const h = window.location.hostname;
+  const isLAN = h.startsWith('192.168.') || h.startsWith('10.') || h.startsWith('172.');
+  if (!IS_SECURE && isLAN)
+    return `Trang đang mở qua HTTP trên mạng LAN → trình duyệt tự chặn micro.\n\nCách mở khoá:\n• Chrome: vào chrome://flags → tìm "Insecure origins treated as secure" → thêm http://${h}:PORT → Relaunch\n• Hoặc truy cập qua https:// nếu server có SSL\n• Hoặc dùng từ máy chủ: http://localhost:PORT (luôn được phép)`;
+  if (!IS_SECURE)
+    return 'Micro chỉ hoạt động trên HTTPS hoặc localhost. Hãy truy cập qua https://.';
+  return null;
+})();
+
 // ── useVoiceInput hook ────────────────────────────────────────────────────────
-// Wraps Web Speech API (SpeechRecognition). Works in Chrome/Edge.
+// Wraps Web Speech API (SpeechRecognition). Works in Chrome/Edge on HTTPS/localhost.
 // lang: BCP-47 tag, e.g. 'vi-VN', 'en-US', 'zh-CN', etc.
 function useVoiceInput(lang = 'vi-VN') {
   const [listening,   setListening]   = useState(false);
   const [transcript,  setTranscript]  = useState('');
   const [interimText, setInterimText] = useState('');
   const [error,       setError]       = useState('');
+  const [permState,   setPermState]   = useState('unknown'); // 'granted'|'denied'|'prompt'|'unknown'
   const [supported,   setSupported]   = useState(false);
   const recRef = useRef(null);
+
+  // ── Check mic permission state via Permissions API ──
+  useEffect(() => {
+    if (!navigator.permissions) return;
+    navigator.permissions.query({ name: 'microphone' })
+      .then(s => {
+        setPermState(s.state);
+        s.onchange = () => setPermState(s.state);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setSupported(false); return; }
     setSupported(true);
     const rec = new SR();
-    rec.continuous      = true;   // keep recording until user stops
-    rec.interimResults  = true;   // show partial results live
+    rec.continuous      = true;
+    rec.interimResults  = true;
     rec.maxAlternatives = 1;
     rec.lang = lang;
 
@@ -1322,12 +1348,29 @@ function useVoiceInput(lang = 'vi-VN') {
     rec.onerror = (e) => {
       setListening(false);
       setInterimText('');
-      if (e.error === 'not-allowed')
-        setError('Microphone bị chặn. Hãy cho phép quyền truy cập micro trong trình duyệt.');
-      else if (e.error === 'no-speech')
-        setError('Không phát hiện giọng nói. Hãy thử lại.');
-      else
+      if (e.error === 'not-allowed') {
+        setPermState('denied');
+        // Show context-aware fix hint
+        if (MIC_FIX_HINT) {
+          setError(MIC_FIX_HINT);
+        } else {
+          setError(
+            'Microphone bị chặn.\n\n' +
+            'Cách mở khoá:\n' +
+            '① Nhấn vào biểu tượng 🔒 hoặc ℹ️ trên thanh địa chỉ\n' +
+            '② Tìm mục "Microphone" → chọn "Cho phép"\n' +
+            '③ Tải lại trang (F5)'
+          );
+        }
+      } else if (e.error === 'no-speech') {
+        setError('Không nghe thấy tiếng. Hãy nói to hơn hoặc kiểm tra micro.');
+      } else if (e.error === 'network') {
+        setError('Lỗi mạng khi nhận dạng giọng nói. Kiểm tra kết nối internet.');
+      } else if (e.error === 'aborted') {
+        // user aborted — not an error
+      } else {
         setError(`Lỗi nhận dạng: ${e.error}`);
+      }
     };
     rec.onresult = (e) => {
       let interim = '';
@@ -1352,6 +1395,11 @@ function useVoiceInput(lang = 'vi-VN') {
 
   const start = useCallback(() => {
     if (!recRef.current || listening) return;
+    // Warn immediately if we already know it's blocked
+    if (!IS_SECURE) {
+      setError(MIC_FIX_HINT || 'Micro yêu cầu HTTPS hoặc localhost.');
+      return;
+    }
     setTranscript('');
     setInterimText('');
     setError('');
@@ -1373,7 +1421,7 @@ function useVoiceInput(lang = 'vi-VN') {
     setError('');
   }, []);
 
-  return { listening, transcript, interimText, error, supported, toggle, stop, reset, setTranscript };
+  return { listening, transcript, interimText, error, permState, supported, toggle, stop, reset, setTranscript };
 }
 
 // ── Lang code → BCP-47 speech tag ────────────────────────────────────────────
@@ -2606,6 +2654,20 @@ function App() {
 
       {/* Chat tab */}
       {activeTab==='chat' && (<>
+        {/* HTTP warning banner — only on non-secure LAN context */}
+        {!IS_SECURE && (
+          <div style={{
+            padding:'6px 12px',background:'#fff8e1',borderBottom:'1px solid #ffe082',
+            fontSize:11,color:'#5d4037',display:'flex',alignItems:'flex-start',gap:7,flexShrink:0,
+          }}>
+            <span style={{flexShrink:0}}>⚠️</span>
+            <span style={{lineHeight:1.5}}>
+              Trang đang chạy qua <strong>HTTP</strong> → micro & camera bị chặn bởi trình duyệt.<br/>
+              Để dùng voice: mở Chrome → <code style={{fontSize:10,background:'#efebe9',borderRadius:3,padding:'0 3px'}}>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> → thêm địa chỉ này → Relaunch.<br/>
+              Hoặc truy cập qua <strong>localhost</strong> trên máy chủ.
+            </span>
+          </div>
+        )}
         {/* Filter bar */}
         <div className="fbar">
           {FILTERS.map(f=>(
@@ -2676,9 +2738,27 @@ function App() {
               onClick={voice.stop}>■ Dừng</button>
           </div>
         )}
-        {voice.supported && voice.error && (
-          <div className="voice-bar" style={{background:'#fff3e0',borderColor:'#ffe0b2',color:'#e65100'}}>
-            ⚠️ {voice.error}
+        {voice.error && (
+          <div className="voice-bar" style={{
+            background: voice.permState==='denied' ? '#fff3e0' : '#fff8e1',
+            borderColor: voice.permState==='denied' ? '#ffcc80' : '#ffe0b2',
+            color:'#e65100', flexDirection:'column', alignItems:'flex-start', gap:4,
+            whiteSpace:'pre-wrap', lineHeight:1.5,
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:6,width:'100%'}}>
+              <span>{voice.permState==='denied' ? '🚫' : '⚠️'}</span>
+              <strong style={{flex:1,fontSize:11.5}}>
+                {voice.permState==='denied' ? 'Microphone bị chặn' : 'Lỗi microphone'}
+              </strong>
+              <button style={{background:'none',border:'none',cursor:'pointer',color:'#9aa0a6',fontSize:13,padding:'0 2px'}}
+                onClick={voice.reset} title="Đóng">✕</button>
+            </div>
+            <div style={{fontSize:11,lineHeight:1.6,paddingLeft:20}}>{voice.error}</div>
+            {voice.permState==='denied' && IS_SECURE && (
+              <div style={{fontSize:10.5,paddingLeft:20,color:'#bf360c'}}>
+                👆 Nhấn 🔒 trên thanh địa chỉ → Microphone → <strong>Cho phép</strong> → F5
+              </div>
+            )}
           </div>
         )}
 
