@@ -1,12 +1,14 @@
 /**
  * Cloudflare Pages Function: POST /api/ai
  * ─────────────────────────────────────────────────────────────────────────────
- * Runs entirely on Cloudflare Edge — does NOT need LOCAL_API_URL.
- * Supports: OpenAI · Groq · Google Gemini · Mistral · Custom OpenAI-compatible
+ * Strategy (in priority order):
+ *   1. If LOCAL_API_URL is set → proxy the whole request to the local Node server.
+ *      The Node server has direct internet access and no CF routing restrictions.
+ *   2. Otherwise → call the AI provider directly from the CF Edge Worker.
+ *      Note: some IBM endpoints (inference.bob.ibm.com) may be unreachable from
+ *      CF edge (error 530/1016). In that case the user sees a clear message.
  *
  * Body: { message, history, fileContext, provider, model, apiKey, baseUrl }
- * The API key travels only over HTTPS from the user's browser to this Worker,
- * then from this Worker to the AI provider — it is never stored or logged.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 // Safe JSON parse — returns [data, null] or [null, rawText]
@@ -16,22 +18,41 @@ async function safeJson(res) {
   catch { return [null, text]; }
 }
 
-export async function onRequestPost(context) {
-  const { request } = context;
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Content-Type': 'application/json',
+};
 
-  // ── CORS preflight (handled by [[path]].js, but guard here too) ──────────
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
-  };
+export async function onRequestPost(context) {
+  const { request, env } = context;
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: CORS });
+  }
+
+  // ── Strategy 1: proxy to local Node server if LOCAL_API_URL is set ───────
+  // This avoids CF edge routing restrictions for endpoints like inference.bob.ibm.com
+  const localApi = env?.LOCAL_API_URL;
+  if (localApi) {
+    try {
+      const r = await fetch(`${localApi}/api/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const [data, rawText] = await safeJson(r);
+      if (!r.ok || !data) {
+        return new Response(JSON.stringify({ error: `Local server lỗi (${r.status}): ${rawText?.slice(0,200) || ''}` }), { status: r.status || 502, headers: CORS });
+      }
+      return new Response(JSON.stringify(data), { status: 200, headers: CORS });
+    } catch (e) {
+      // Local server unreachable — fall through to direct edge call
+    }
   }
 
   const {
@@ -44,8 +65,8 @@ export async function onRequestPost(context) {
     baseUrl    = '',
   } = body;
 
-  if (!apiKey) return new Response(JSON.stringify({ error: 'Thiếu API key.' }), { status: 400, headers: corsHeaders });
-  if (!message) return new Response(JSON.stringify({ error: 'Thiếu message.' }), { status: 400, headers: corsHeaders });
+  if (!apiKey) return new Response(JSON.stringify({ error: 'Thiếu API key.' }), { status: 400, headers: CORS });
+  if (!message) return new Response(JSON.stringify({ error: 'Thiếu message.' }), { status: 400, headers: CORS });
 
   // ── Provider config ────────────────────────────────────────────────────────
   const bobTeamId = (provider === 'bob') ? (baseUrl || '') : '';
@@ -63,8 +84,12 @@ export async function onRequestPost(context) {
   const endpointUrl  = cfg.url;
 
   if (!endpointUrl) {
-    return new Response(JSON.stringify({ error: 'Custom provider: baseUrl là bắt buộc.' }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: 'Custom provider: baseUrl là bắt buộc.' }), { status: 400, headers: CORS });
   }
+
+  // ── IBM Bob note ───────────────────────────────────────────────────────────
+  // inference.bob.ibm.com may be unreachable from CF edge (530/1016).
+  // If this call fails, instruct user to set LOCAL_API_URL (Cloudflare Tunnel).
 
   // ── System prompt ──────────────────────────────────────────────────────────
   const systemPrompt = `Bạn là trợ lý AI tích hợp trong ứng dụng quản lý file nội bộ "Trợ Lý Tìm File".
@@ -100,7 +125,7 @@ Context file hiện tại: ${fileContext || 'không có'}`;
       const [data, rawText] = await safeJson(res);
       if (!res.ok || !data) {
         const errMsg = data?.error?.message || rawText || `HTTP ${res.status}`;
-        return new Response(JSON.stringify({ error: `Gemini: ${errMsg}` }), { status: res.status || 502, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: `Gemini: ${errMsg}` }), { status: res.status || 502, headers: CORS });
       }
       aiResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
@@ -124,37 +149,34 @@ Context file hiện tại: ${fileContext || 'không có'}`;
 
       const [data, rawText] = await safeJson(res);
       if (!res.ok || !data) {
-        // Non-JSON response — gateway/proxy error (e.g. Cloudflare 1016, 502, nginx error page)
-        const errMsg = rawText?.slice(0, 200) || `HTTP ${res.status}`;
-        return new Response(JSON.stringify({ error: `${provider} API lỗi (${res.status}): ${errMsg}` }), { status: res.status || 502, headers: corsHeaders });
+        const errMsg = rawText?.slice(0, 300) || `HTTP ${res.status}`;
+        // Special guidance for IBM Bob 530/1016 from CF edge
+        const hint = (provider === 'bob' && (res.status === 530 || res.status === 0 || errMsg.includes('1016')))
+          ? ' — IBM Bob không thể gọi trực tiếp từ Cloudflare Edge. Cần cài LOCAL_API_URL (Cloudflare Tunnel) để proxy qua máy chủ local.'
+          : '';
+        return new Response(JSON.stringify({ error: `${provider} lỗi (${res.status}): ${errMsg}${hint}` }), { status: res.status || 502, headers: CORS });
       }
       if (data.error) {
         const errMsg = data.error?.message || JSON.stringify(data.error);
-        return new Response(JSON.stringify({ error: errMsg }), { status: res.status || 400, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: errMsg }), { status: res.status || 400, headers: CORS });
       }
       aiResponse = data?.choices?.[0]?.message?.content || '';
     }
 
     return new Response(
       JSON.stringify({ reply: aiResponse, model: chosenModel }),
-      { status: 200, headers: corsHeaders }
+      { status: 200, headers: CORS }
     );
 
   } catch (e) {
     return new Response(
       JSON.stringify({ error: `Edge Worker lỗi: ${e.message}` }),
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: CORS }
     );
   }
 }
 
 // Handle CORS preflight
 export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return new Response(null, { headers: CORS });
 }
